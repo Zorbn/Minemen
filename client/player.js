@@ -66,9 +66,9 @@ export class Player {
 
     draw(ctx) {
         ctx.save();
-        ctx.translate(this.visualX, this.visualY);
+        ctx.translate(Math.floor(this.visualX), Math.floor(this.visualY));
         ctx.rotate(Math.PI * 0.5 * this.direction);
-        ctx.drawImage(this.sprite, -this.sprite.width / 2, -this.sprite.height / 2);
+        ctx.drawImage(this.sprite, Math.floor(-this.sprite.width / 2), Math.floor(-this.sprite.height / 2));
         ctx.restore();
     }
 }
