@@ -1,9 +1,15 @@
 import { WebSocketServer } from "ws";
 import { Player } from "./player.js";
-import { NetMsg, NetMsgId, NetMaxMsgLength } from "../common/netcode.mjs";
+import { NetMsg, NetMapByteCount, NetMsgId, NetMaxMsgLength } from "../common/netcode.mjs";
+import { Tile, TilemapSize, tilemapInit } from "../common/tile.mjs";
 
-const packet = {};
+const packet = {
+    bits: new Array(NetMapByteCount),
+};
 const outMsgData = new DataView(new ArrayBuffer(NetMaxMsgLength));
+
+const tilemap = new Array(TilemapSize * TilemapSize);
+tilemapInit(tilemap);
 
 let nextPlayerIndex = 0;
 const players = new Map();
@@ -58,6 +64,12 @@ function onConnection(ws) {
                 broadcast(NetMsg.write(packet, outMsgData));
                 break;
             case NetMsgId.BreakTile:
+                if (packet.x < 0 || packet.x >= TilemapSize || packet.y < 0 || packet.y >= TilemapSize) {
+                    break;
+                }
+
+                tilemap[packet.x + packet.y * TilemapSize] = Tile.Air;
+
                 broadcast(NetMsg.write(packet, outMsgData));
                 break;
             default:
@@ -84,4 +96,18 @@ function sendState(ws) {
         packet.y = otherPlayer.y;
         ws.send(NetMsg.write(packet, outMsgData));
     }
+
+    packet.id = NetMsgId.SetTileState;
+    packet.bits.fill(0);
+
+    for (let i = 0; i < TilemapSize * TilemapSize; i++) {
+        const bitIndex = i % 8;
+        const byteIndex = Math.floor(i / 8);
+
+        if (tilemap[i] != Tile.Air) {
+            packet.bits[byteIndex] |= 1 << bitIndex;
+        }
+    }
+
+    ws.send(NetMsg.write(packet, outMsgData));
 }

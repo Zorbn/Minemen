@@ -1,9 +1,7 @@
 import { Input } from "./input.js";
 import { Player } from "./player.js";
 import { NetMsg, NetMsgId, NetMaxMsgLength, NetTickTime } from "../common/netcode.mjs";
-import { Tile, TileSize, TilemapSize } from "./tile.js";
-import { GMath } from "./gmath.js";
-import { PerlinNoise } from "./perlinNoise.js";
+import { Tile, TileSize, TilemapSize, tilemapInit } from "../common/tile.mjs";
 
 const ws = new WebSocket("ws://localhost:8448");
 ws.binaryType = "arraybuffer";
@@ -27,33 +25,20 @@ const assets = {
     breaking: loadImage("assets/breaking.png"),
 };
 
-// Noise.seed() function only supports 65535 seed values.
-// Used for gameplay related rng, visual-only rng uses standard Math.random().
-const seed = 0.77 * 65536;
-const rng = GMath.sfc32(0, 0, 0, seed);
-// Mix the rng state to account for simple seed.
-// Otherwise starting numbers might be similar across plays.
-for (let i = 0; i < 20; i++) {
-    rng();
-}
+// // Noise.seed() function only supports 65535 seed values.
+// // Used for gameplay related rng, visual-only rng uses standard Math.random().
+// const seed = 0.77 * 65536;
+// const rng = GMath.sfc32(0, 0, 0, seed);
+// // Mix the rng state to account for simple seed.
+// // Otherwise starting numbers might be similar across plays.
+// for (let i = 0; i < 20; i++) {
+//     rng();
+// }
 
 let localPlayerIndex = null;
 const players = new Map();
 const tilemap = new Array(TilemapSize * TilemapSize);
-tilemap.fill(Tile.Air);
-
-// Init tilemap:
-{
-    for (let y = 0; y < TilemapSize; y++) {
-        for (let x = 0; x < TilemapSize; x++) {
-            const noise = PerlinNoise.noise(x * 0.3, y * 0.3);
-
-            if (noise > 0) {
-                tilemap[x + y * TilemapSize] = Tile.Dirt;
-            }
-        }
-    }
-}
+tilemapInit(tilemap);
 
 ws.addEventListener("open", (event) => {
     // ws.send(msgData);
@@ -73,7 +58,7 @@ ws.addEventListener("message", (event) => {
             localPlayerIndex = packet.index;
             break;
         case NetMsgId.MovePlayer:
-            if (packet.index == localPlayerIndex) {
+            if (packet.index === localPlayerIndex) {
                 break;
             }
 
@@ -93,6 +78,16 @@ ws.addEventListener("message", (event) => {
             }
 
             tilemap[packet.x + packet.y * TilemapSize] = Tile.Air;
+            break;
+        case NetMsgId.SetTileState:
+            for (let i = 0; i < TilemapSize * TilemapSize; i++) {
+                const bitIndex = i % 8;
+                const byteIndex = Math.floor(i / 8);
+
+                if ((packet.bits[byteIndex] & (1 << bitIndex)) == 0) {
+                    tilemap[i] = Tile.Air;
+                }
+            }
             break;
         default:
             console.log(`got unknown msg id: ${packet.id}`);

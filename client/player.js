@@ -1,11 +1,11 @@
-import { GMath } from "./gmath.js";
-import { checkTileCollisions, TileSize } from "./tile.js";
+import { GMath } from "../common/gmath.mjs";
+import { checkTileCollisions, TileSize } from "../common/tile.mjs";
 import { NetMsg, NetMsgId } from "../common/netcode.mjs";
 
 const MoveSpeed = 50;
 const LerpSpeed = 10;
-const HitboxRadius = 12;
-const BreakRadius = 14;
+const HitboxRadius = 11;
+const BreakRadius = 12;
 
 export class Player {
     constructor(index, x, y) {

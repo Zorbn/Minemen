@@ -1,4 +1,4 @@
-import { GMath } from "./gmath.js";
+import { GMath } from "./gmath.mjs";
 
 const W = 8 * 4; // 8 * sizeof(uint);
 const S = W / 2;

@@ -1,3 +1,5 @@
+import { PerlinNoise } from "./perlinNoise.mjs";
+
 export const Tile = {
     Air: 0,
     Dirt: 1,
@@ -24,4 +26,18 @@ export function checkTileCollisions(tilemap, x, y, result) {
     }
 
     return false;
+}
+
+export function tilemapInit(tilemap) {
+    tilemap.fill(Tile.Air);
+
+    for (let y = 0; y < TilemapSize; y++) {
+        for (let x = 0; x < TilemapSize; x++) {
+            const noise = PerlinNoise.noise(x * 0.3, y * 0.3);
+
+            if (noise > 0) {
+                tilemap[x + y * TilemapSize] = Tile.Dirt;
+            }
+        }
+    }
 }
