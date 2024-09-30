@@ -57,6 +57,9 @@ function onConnection(ws) {
 
                 broadcast(NetMsg.write(packet, outMsgData));
                 break;
+            case NetMsgId.BreakTile:
+                broadcast(NetMsg.write(packet, outMsgData));
+                break;
             default:
                 console.log(`got unknown msg id: ${packet.id}`)
         }

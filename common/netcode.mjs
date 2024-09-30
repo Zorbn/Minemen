@@ -7,6 +7,7 @@ export const NetMsgId = {
     RemovePlayer: 1,
     SetLocalPlayerIndex: 2,
     MovePlayer: 3,
+    BreakTile: 4,
 }
 
 export const NetType = {
@@ -100,6 +101,10 @@ export const NetMsgs = {
         index: NetType.F64,
         x: NetType.F32,
         y: NetType.F32,
-        direction: NetType.F32,
+        angle: NetType.F32,
+    }),
+    [NetMsgId.BreakTile]: new NetMsg({
+        x: NetType.F32,
+        y: NetType.F32,
     }),
 }

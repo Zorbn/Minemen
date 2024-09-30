@@ -1,7 +1,7 @@
 import { Input } from "./input.js";
 import { Player } from "./player.js";
 import { NetMsg, NetMsgId, NetMaxMsgLength, NetTickTime } from "../common/netcode.mjs";
-import { Tile } from "./tile.js";
+import { Tile, TileSize, TilemapSize } from "./tile.js";
 import { GMath } from "./gmath.js";
 import { PerlinNoise } from "./perlinNoise.js";
 
@@ -24,11 +24,12 @@ function loadImage(path) {
 const assets = {
     mineman: loadImage("assets/sprite_mineman_0.png"),
     dirt: loadImage("assets/sprite_dirt_0.png"),
+    breaking: loadImage("assets/breaking.png"),
 };
 
 // Noise.seed() function only supports 65535 seed values.
 // Used for gameplay related rng, visual-only rng uses standard Math.random().
-const seed = Math.random() * 65536;
+const seed = 0.77 * 65536;
 const rng = GMath.sfc32(0, 0, 0, seed);
 // Mix the rng state to account for simple seed.
 // Otherwise starting numbers might be similar across plays.
@@ -38,19 +39,17 @@ for (let i = 0; i < 20; i++) {
 
 let localPlayerIndex = null;
 const players = new Map();
-const tileSize = 32;
-const tilemapSize = 20; // TODO: The correct size is 40, make sure offscreen tiles aren't drawn.
-const tilemap = new Array(tilemapSize * tilemapSize);
+const tilemap = new Array(TilemapSize * TilemapSize);
 tilemap.fill(Tile.Air);
 
 // Init tilemap:
 {
-    for (let y = 0; y < tilemapSize; y++) {
-        for (let x = 0; x < tilemapSize; x++) {
+    for (let y = 0; y < TilemapSize; y++) {
+        for (let x = 0; x < TilemapSize; x++) {
             const noise = PerlinNoise.noise(x * 0.3, y * 0.3);
 
             if (noise > 0) {
-                tilemap[x + y * tilemapSize] = Tile.Dirt;
+                tilemap[x + y * TilemapSize] = Tile.Dirt;
             }
         }
     }
@@ -65,7 +64,7 @@ ws.addEventListener("message", (event) => {
 
     switch (packet.id) {
         case NetMsgId.AddPlayer:
-            players.set(packet.index, new Player(assets, packet.index, packet.x, packet.y));
+            players.set(packet.index, new Player(packet.index, packet.x, packet.y));
             break;
         case NetMsgId.RemovePlayer:
             players.delete(packet.index);
@@ -86,7 +85,14 @@ ws.addEventListener("message", (event) => {
 
             player.x = packet.x;
             player.y = packet.y;
-            player.direction = packet.direction;
+            player.angle = packet.angle;
+            break;
+        case NetMsgId.BreakTile:
+            if (packet.x < 0 || packet.x >= TilemapSize || packet.y < 0 || packet.y >= TilemapSize) {
+                break;
+            }
+
+            tilemap[packet.x + packet.y * TilemapSize] = Tile.Air;
             break;
         default:
             console.log(`got unknown msg id: ${packet.id}`);
@@ -96,6 +102,8 @@ ws.addEventListener("message", (event) => {
 
 let lastTime;
 let tickTimer = 0;
+let cameraX = 0;
+let cameraY = 0;
 
 function tick() {
     const player = players.get(localPlayerIndex);
@@ -107,9 +115,11 @@ function tick() {
     packet.id = NetMsgId.MovePlayer;
     packet.index = player.index;
     packet.x = player.x;
-    packet.y = player.y
-    packet.direction = player.direction;
+    packet.y = player.y;
+    packet.angle = player.angle;
     ws.send(NetMsg.write(packet, outMsgData));
+
+    player.tryRequestBreak(ws, packet, outMsgData);
 }
 
 function update(time) {
@@ -124,9 +134,11 @@ function update(time) {
         const player = players.get(playerIndex);
 
         if (playerIndex === localPlayerIndex) {
-            player.update(input, dt);
+            player.update(input, tilemap, dt);
+            cameraX = player.x;
+            cameraY = player.y;
         } else {
-            player.remoteUpdate(dt);
+            player.remoteUpdate(tilemap, dt);
         }
     }
 
@@ -139,14 +151,16 @@ function update(time) {
 
     input.update();
 
+    ctx.save();
     ctx.fillStyle = "#4c2300";
-    ctx.fillRect(0, 0, 640, 480);
+    ctx.fillRect(0, 0, canvas.clientWidth, canvas.clientHeight);
+    ctx.translate(Math.floor(-cameraX + canvas.clientWidth / 2), Math.floor(-cameraY + canvas.clientHeight / 2));
 
-    for (let y = 0; y < tilemapSize; y++) {
-        for (let x = 0; x < tilemapSize; x++) {
+    for (let y = 0; y < TilemapSize; y++) {
+        for (let x = 0; x < TilemapSize; x++) {
             let tileImage
 
-            switch (tilemap[x + y * tilemapSize]) {
+            switch (tilemap[x + y * TilemapSize]) {
                 case Tile.Air:
                     continue;
                 case Tile.Dirt:
@@ -154,14 +168,16 @@ function update(time) {
                     break;
             }
 
-            ctx.drawImage(tileImage, x * tileSize, y * tileSize);
+            ctx.drawImage(tileImage, x * TileSize, y * TileSize);
         }
     }
 
     for (const playerIndex of players.keys()) {
         const player = players.get(playerIndex);
-        player.draw(ctx);
+        player.draw(ctx, assets);
     }
+
+    ctx.restore();
 
     requestAnimationFrame(update);
 }
