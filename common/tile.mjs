@@ -7,7 +7,7 @@ export const Tile = {
 
 export const TileSize = 32;
 
-export const TilemapSize = 20; // TODO: The correct size is 40, make sure offscreen tiles aren't drawn.
+export const TilemapSize = 40;
 
 export function checkTileCollisions(tilemap, x, y, result) {
     const tileX = Math.floor(x / TileSize);

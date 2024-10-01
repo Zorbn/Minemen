@@ -3,6 +3,7 @@ import { Player } from "./player.js";
 import { Zombie } from "./zombie.js";
 import { NetMsg, NetMsgId, NetMaxMsgLength, NetTickTime } from "../common/netcode.mjs";
 import { Tile, TileSize, TilemapSize, tilemapInit } from "../common/tile.mjs";
+import { GMath } from "../common/gmath.mjs";
 
 const ws = new WebSocket("ws://localhost:8448");
 ws.binaryType = "arraybuffer";
@@ -52,7 +53,7 @@ ws.addEventListener("message", (event) => {
 
     switch (packet.id) {
         case NetMsgId.AddPlayer:
-            players.set(packet.index, new Player(packet.index, packet.x, packet.y));
+            players.set(packet.index, new Player(packet.index, packet.x, packet.y, packet.health));
             break;
         case NetMsgId.RemovePlayer:
             players.delete(packet.index);
@@ -60,7 +61,7 @@ ws.addEventListener("message", (event) => {
         case NetMsgId.SetLocalPlayerIndex:
             localPlayerIndex = packet.index;
             break;
-        case NetMsgId.MovePlayer:
+        case NetMsgId.MovePlayer: {
             if (packet.index === localPlayerIndex) {
                 break;
             }
@@ -74,7 +75,16 @@ ws.addEventListener("message", (event) => {
             player.x = packet.x;
             player.y = packet.y;
             player.angle = packet.angle;
-            break;
+        } break;
+        case NetMsgId.SetPlayerHealth: {
+            let player = players.get(packet.index);
+
+            if (player === undefined) {
+                break;
+            }
+
+            player.health = packet.health;
+        } break;
         case NetMsgId.BreakTile:
             if (packet.x < 0 || packet.x >= TilemapSize || packet.y < 0 || packet.y >= TilemapSize) {
                 break;
@@ -95,7 +105,7 @@ ws.addEventListener("message", (event) => {
         case NetMsgId.AddZombie:
             zombies.set(packet.index, new Zombie(packet.index, packet.x, packet.y));
             break;
-        case NetMsgId.MoveZombie:
+        case NetMsgId.MoveZombie: {
             let zombie = zombies.get(packet.index);
 
             if (zombie === undefined) {
@@ -105,7 +115,7 @@ ws.addEventListener("message", (event) => {
             zombie.x = packet.x;
             zombie.y = packet.y;
             zombie.angle = packet.angle;
-            break;
+        } break;
         default:
             console.log(`got unknown msg id: ${packet.id}`);
             break;
@@ -172,8 +182,13 @@ function update(time) {
     ctx.fillRect(0, 0, canvas.clientWidth, canvas.clientHeight);
     ctx.translate(Math.floor(-cameraX + canvas.clientWidth / 2), Math.floor(-cameraY + canvas.clientHeight / 2));
 
-    for (let y = 0; y < TilemapSize; y++) {
-        for (let x = 0; x < TilemapSize; x++) {
+    const minVisibleX = GMath.clamp(Math.floor((cameraX - canvas.clientWidth / 2) / TileSize), 0, TilemapSize - 1);
+    const maxVisibleX = GMath.clamp(Math.ceil((cameraX + canvas.clientWidth / 2) / TileSize), 0, TilemapSize - 1);
+    const minVisibleY = GMath.clamp(Math.floor((cameraY - canvas.clientHeight / 2) / TileSize), 0, TilemapSize - 1);
+    const maxVisibleY = GMath.clamp(Math.ceil((cameraY + canvas.clientHeight / 2) / TileSize), 0, TilemapSize - 1);
+
+    for (let y = minVisibleY; y <= maxVisibleY; y++) {
+        for (let x = minVisibleX; x <= maxVisibleX; x++) {
             let tileImage
 
             switch (tilemap[x + y * TilemapSize]) {
@@ -194,6 +209,10 @@ function update(time) {
 
     for (const zombie of zombies.values()) {
         zombie.draw(ctx, assets);
+    }
+
+    for (const player of players.values()) {
+        player.drawUI(ctx, assets);
     }
 
     ctx.restore();

@@ -7,7 +7,7 @@ import { Breaker, PlayerBreakRadius } from "../common/breaker.mjs";
 const MoveSpeed = 50;
 
 export class Player {
-    constructor(index, x, y) {
+    constructor(index, x, y, health) {
         this.index = index;
 
         this.x = x;
@@ -18,6 +18,8 @@ export class Player {
         this.angle = 0;
 
         this.breaker = new Breaker(PlayerBreakRadius);
+
+        this.health = health;
     }
 
     update(input, tilemap, dt) {
@@ -97,5 +99,17 @@ export class Player {
         ctx.rotate(this.angle);
         ctx.drawImage(assets.mineman, Math.floor(-assets.mineman.width / 2), Math.floor(-assets.mineman.height / 2));
         ctx.restore();
+    }
+
+    drawUI(ctx, assets) {
+        const width = 64;
+        const height = 6;
+        const x = this.x - width / 2;
+        const y = this.y + (assets.mineman.height - height) / 2;
+
+        ctx.fillStyle = "black";
+        ctx.fillRect(x, y, width, height);
+        ctx.fillStyle = "red";
+        ctx.fillRect(x + 1, y + 1, Math.max(this.health / 100, 0) * (width - 2), height - 2);
     }
 }

@@ -9,10 +9,11 @@ export const NetMsgId = {
     RemovePlayer: 1,
     SetLocalPlayerIndex: 2,
     MovePlayer: 3,
-    BreakTile: 4,
-    SetTileState: 5,
-    AddZombie: 6,
-    MoveZombie: 7,
+    SetPlayerHealth: 4,
+    BreakTile: 5,
+    SetTileState: 6,
+    AddZombie: 7,
+    MoveZombie: 8,
 }
 
 export const NetType = {
@@ -158,6 +159,7 @@ export const NetMsgs = {
         index: { fieldType: NetType.F64, fieldCount: 1 },
         x: { fieldType: NetType.F32, fieldCount: 1 },
         y: { fieldType: NetType.F32, fieldCount: 1 },
+        health: { fieldType: NetType.F32, fieldCount: 1 },
     }),
     [NetMsgId.RemovePlayer]: new NetMsg({
         index: { fieldType: NetType.F64, fieldCount: 1 },
@@ -170,6 +172,10 @@ export const NetMsgs = {
         x: { fieldType: NetType.F32, fieldCount: 1 },
         y: { fieldType: NetType.F32, fieldCount: 1 },
         angle: { fieldType: NetType.F32, fieldCount: 1 },
+    }),
+    [NetMsgId.SetPlayerHealth]: new NetMsg({
+        index: { fieldType: NetType.F64, fieldCount: 1 },
+        health: { fieldType: NetType.F32, fieldCount: 1 },
     }),
     [NetMsgId.BreakTile]: new NetMsg({
         x: { fieldType: NetType.F32, fieldCount: 1 },

@@ -3,5 +3,6 @@ export class Player {
         this.index = index;
         this.x = x;
         this.y = y;
+        this.health = 100;
     }
 }

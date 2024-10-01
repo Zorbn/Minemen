@@ -56,6 +56,7 @@ function onConnection(ws) {
     packet.index = playerIndex;
     packet.x = player.x;
     packet.y = player.y;
+    packet.health = player.health;
     broadcast(NetMsg.write(packet, outMsgData));
 
     packet.id = NetMsgId.SetLocalPlayerIndex;
@@ -105,6 +106,7 @@ function sendState(ws) {
         packet.index = otherPlayerIndex;
         packet.x = otherPlayer.x;
         packet.y = otherPlayer.y;
+        packet.health = otherPlayer.health;
         ws.send(NetMsg.write(packet, outMsgData));
     }
 

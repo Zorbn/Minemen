@@ -9,6 +9,10 @@ export class GMath {
         return (a + shortestAngle * delta) % (Math.PI * 2);
     }
 
+    static clamp(x, min, max) {
+        return Math.min(Math.max(x, min), max);
+    }
+
     static distance(x0, y0, x1, y1) {
         const displacementX = x0 - x1;
         const displacementY = y0 - y1;
