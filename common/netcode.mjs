@@ -2,6 +2,7 @@ export const NetMaxMsgLength = 256;
 export const NetTickRate = 20;
 export const NetTickTime = 1 / 20;
 export const NetMapByteCount = 200;
+export const NetLerpSpeed = 10;
 
 export const NetMsgId = {
     AddPlayer: 0,
@@ -10,6 +11,8 @@ export const NetMsgId = {
     MovePlayer: 3,
     BreakTile: 4,
     SetTileState: 5,
+    AddZombie: 6,
+    MoveZombie: 7,
 }
 
 export const NetType = {
@@ -174,5 +177,16 @@ export const NetMsgs = {
     }),
     [NetMsgId.SetTileState]: new NetMsg({
         bits: { fieldType: NetType.U8, fieldCount: NetMapByteCount },
+    }),
+    [NetMsgId.AddZombie]: new NetMsg({
+        index: { fieldType: NetType.F64, fieldCount: 1 },
+        x: { fieldType: NetType.F32, fieldCount: 1 },
+        y: { fieldType: NetType.F32, fieldCount: 1 },
+    }),
+    [NetMsgId.MoveZombie]: new NetMsg({
+        index: { fieldType: NetType.F64, fieldCount: 1 },
+        x: { fieldType: NetType.F32, fieldCount: 1 },
+        y: { fieldType: NetType.F32, fieldCount: 1 },
+        angle: { fieldType: NetType.F32, fieldCount: 1 },
     }),
 }

@@ -1,7 +1,8 @@
 import { WebSocketServer } from "ws";
 import { Player } from "./player.js";
-import { NetMsg, NetMapByteCount, NetMsgId, NetMaxMsgLength } from "../common/netcode.mjs";
+import { NetMsg, NetMapByteCount, NetMsgId, NetMaxMsgLength, NetTickTime } from "../common/netcode.mjs";
 import { Tile, TilemapSize, tilemapInit } from "../common/tile.mjs";
+import { Zombie } from "./zombie.js";
 
 const packet = {
     bits: new Array(NetMapByteCount),
@@ -13,6 +14,16 @@ tilemapInit(tilemap);
 
 let nextPlayerIndex = 0;
 const players = new Map();
+let nextZombieIndex = 0;
+const zombies = new Map();
+
+// Init zombies:
+{
+    for (let i = 0; i < 5; i++) {
+        zombies.set(nextZombieIndex, new Zombie(nextZombieIndex, Math.random() * 640, Math.random() * 480));
+        nextZombieIndex += 1;
+    }
+}
 
 function broadcast(data) {
     for (const socket of wss.clients) {
@@ -97,6 +108,16 @@ function sendState(ws) {
         ws.send(NetMsg.write(packet, outMsgData));
     }
 
+    for (const zombieIndex of zombies.keys()) {
+        const zombie = zombies.get(zombieIndex);
+
+        packet.id = NetMsgId.AddZombie;
+        packet.index = zombieIndex;
+        packet.x = zombie.x;
+        packet.y = zombie.y;
+        ws.send(NetMsg.write(packet, outMsgData));
+    }
+
     packet.id = NetMsgId.SetTileState;
     packet.bits.fill(0);
 
@@ -111,3 +132,31 @@ function sendState(ws) {
 
     ws.send(NetMsg.write(packet, outMsgData));
 }
+
+let lastTime;
+
+function tick() {
+    let time = performance.now();
+
+    if (lastTime === undefined) {
+        lastTime = time;
+    }
+
+    const dt = (time - lastTime) * 0.001;
+    lastTime = time;
+
+    for (const zombieIndex of zombies.keys()) {
+        const zombie = zombies.get(zombieIndex);
+
+        zombie.update(players, zombies, tilemap, dt, broadcast, packet, outMsgData);
+
+        packet.id = NetMsgId.MoveZombie;
+        packet.index = zombieIndex;
+        packet.x = zombie.x;
+        packet.y = zombie.y;
+        packet.angle = zombie.angle;
+        broadcast(NetMsg.write(packet, outMsgData));
+    }
+}
+
+setInterval(tick, NetTickTime * 1000);

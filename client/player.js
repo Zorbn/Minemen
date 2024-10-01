@@ -1,15 +1,15 @@
 import { GMath } from "../common/gmath.mjs";
-import { checkTileCollisions, TileSize } from "../common/tile.mjs";
-import { NetMsg, NetMsgId } from "../common/netcode.mjs";
+import { HumanoidHitboxRadius } from "../common/collision.mjs";
+import { checkRadiusTileCollisions, TileSize } from "../common/tile.mjs";
+import { NetLerpSpeed, NetMsg, NetMsgId } from "../common/netcode.mjs";
+import { Breaker, PlayerBreakRadius } from "../common/breaker.mjs";
 
 const MoveSpeed = 50;
-const LerpSpeed = 10;
-const HitboxRadius = 11;
-const BreakRadius = 12;
 
 export class Player {
     constructor(index, x, y) {
         this.index = index;
+
         this.x = x;
         this.y = y;
         this.visualX = x;
@@ -17,9 +17,7 @@ export class Player {
 
         this.angle = 0;
 
-        this.hitTileResult = { x: 0, y: 0 };
-        this.breakTileResult = { x: 0, y: 0 };
-        this.breakProgress = { isBreaking: false, breakingTime: 0 };
+        this.breaker = new Breaker(PlayerBreakRadius);
     }
 
     update(input, tilemap, dt) {
@@ -51,7 +49,7 @@ export class Player {
         let velocityX = velocityMag * directionX / directionMag;
         let didHitTile = false;
 
-        if (this.checkTileCollisions(tilemap, this.x + velocityX, this.y, HitboxRadius, this.hitTileResult)) {
+        if (checkRadiusTileCollisions(tilemap, this.x + velocityX, this.y, HumanoidHitboxRadius, null)) {
             didHitTile = true;
         } else {
             this.x += velocityX;
@@ -59,72 +57,39 @@ export class Player {
 
         let velocityY = velocityMag * directionY / directionMag;
 
-        if (this.checkTileCollisions(tilemap, this.x, this.y + velocityY, HitboxRadius, this.hitTileResult)) {
+        if (checkRadiusTileCollisions(tilemap, this.x, this.y + velocityY, HumanoidHitboxRadius, null)) {
             didHitTile = true;
         } else {
             this.y += velocityY;
         }
 
-        this.updateBreakingAnimation(tilemap, dt);
+        this.breaker.update(tilemap, this.x, this.y, dt);
 
         this.visualX = this.x;
         this.visualY = this.y;
     }
 
     tryRequestBreak(ws, packet, outMsgData) {
-        if (!this.breakProgress.isBreaking || this.breakProgress.breakingTime < 1) {
+        if (!this.breaker.isReady()) {
             return;
         }
 
         packet.id = NetMsgId.BreakTile;
-        packet.x = this.breakTileResult.x;
-        packet.y = this.breakTileResult.y;
+        packet.x = this.breaker.getX();
+        packet.y = this.breaker.getY();
         ws.send(NetMsg.write(packet, outMsgData));
     }
 
-    updateBreakingAnimation(tilemap, dt) {
-        let lastBreakTileX = this.breakTileResult.x;
-        let lastBreakTileY = this.breakTileResult.y;
-        let isBreaking = this.checkTileCollisions(tilemap, this.x, this.y, BreakRadius, this.breakTileResult);
-
-        this.breakProgress.isBreaking = isBreaking;
-
-        if (!this.breakProgress.isBreaking || lastBreakTileX != this.breakTileResult.x || lastBreakTileY != this.breakTileResult.y) {
-            this.breakProgress.breakingTime = 0;
-        } else {
-            this.breakProgress.breakingTime += dt;
-        }
-    }
-
-    checkTileCollisions(tilemap, x, y, radius, result) {
-        for (let offsetY = -1; offsetY <= 1; offsetY++) {
-            for (let offsetX = -1; offsetX <= 1; offsetX++) {
-                const pointX = x + offsetX * radius;
-                const pointY = y + offsetY * radius;
-
-                if (checkTileCollisions(tilemap, pointX, pointY, result)) {
-                    return true;
-                }
-            }
-        }
-
-        return false;
-    }
-
     remoteUpdate(tilemap, dt) {
-        this.visualX = GMath.lerp(this.visualX, this.x, LerpSpeed * dt);
-        this.visualY = GMath.lerp(this.visualY, this.y, LerpSpeed * dt);
+        this.visualX = GMath.lerp(this.visualX, this.x, NetLerpSpeed * dt);
+        this.visualY = GMath.lerp(this.visualY, this.y, NetLerpSpeed * dt);
 
-        this.updateBreakingAnimation(tilemap, dt);
+        this.breaker.update(tilemap, this.x, this.y, dt);
     }
 
     draw(ctx, assets) {
-        if (this.breakProgress.isBreaking) {
-            // ctx.globalAlpha = Math.min(this.breakProgress.breakingTime, 1);
-            // ctx.fillStyle = "black";
-            // ctx.drawImage(assets.this.hitTileResult.x * TileSize, this.hitTileResult.y * TileSize, TileSize, TileSize);
-            // ctx.globalAlpha = 1;
-            ctx.drawImage(assets.breaking, this.breakTileResult.x * TileSize, this.breakTileResult.y * TileSize);
+        if (this.breaker.isBreaking()) {
+            ctx.drawImage(assets.breaking, this.breaker.getX() * TileSize, this.breaker.getY() * TileSize);
         }
 
         ctx.save();

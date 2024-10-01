@@ -20,9 +20,27 @@ export function checkTileCollisions(tilemap, x, y, result) {
     const tile = tilemap[tileX + tileY * TilemapSize];
 
     if (tile != Tile.Air) {
-        result.x = tileX;
-        result.y = tileY;
+        if (result !== null) {
+            result.x = tileX;
+            result.y = tileY;
+        }
+
         return true;
+    }
+
+    return false;
+}
+
+export function checkRadiusTileCollisions(tilemap, x, y, radius, result) {
+    for (let offsetY = -1; offsetY <= 1; offsetY++) {
+        for (let offsetX = -1; offsetX <= 1; offsetX++) {
+            const pointX = x + offsetX * radius;
+            const pointY = y + offsetY * radius;
+
+            if (checkTileCollisions(tilemap, pointX, pointY, result)) {
+                return true;
+            }
+        }
     }
 
     return false;

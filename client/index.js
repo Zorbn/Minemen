@@ -1,5 +1,6 @@
 import { Input } from "./input.js";
 import { Player } from "./player.js";
+import { Zombie } from "./zombie.js";
 import { NetMsg, NetMsgId, NetMaxMsgLength, NetTickTime } from "../common/netcode.mjs";
 import { Tile, TileSize, TilemapSize, tilemapInit } from "../common/tile.mjs";
 
@@ -23,6 +24,7 @@ const assets = {
     mineman: loadImage("assets/sprite_mineman_0.png"),
     dirt: loadImage("assets/sprite_dirt_0.png"),
     breaking: loadImage("assets/breaking.png"),
+    zombie: loadImage("assets/sprite_zombie_0.png"),
 };
 
 // // Noise.seed() function only supports 65535 seed values.
@@ -37,6 +39,7 @@ const assets = {
 
 let localPlayerIndex = null;
 const players = new Map();
+const zombies = new Map();
 const tilemap = new Array(TilemapSize * TilemapSize);
 tilemapInit(tilemap);
 
@@ -89,6 +92,20 @@ ws.addEventListener("message", (event) => {
                 }
             }
             break;
+        case NetMsgId.AddZombie:
+            zombies.set(packet.index, new Zombie(packet.index, packet.x, packet.y));
+            break;
+        case NetMsgId.MoveZombie:
+            let zombie = zombies.get(packet.index);
+
+            if (zombie === undefined) {
+                break;
+            }
+
+            zombie.x = packet.x;
+            zombie.y = packet.y;
+            zombie.angle = packet.angle;
+            break;
         default:
             console.log(`got unknown msg id: ${packet.id}`);
             break;
@@ -137,6 +154,10 @@ function update(time) {
         }
     }
 
+    for (const zombie of zombies.values()) {
+        zombie.remoteUpdate(tilemap, dt);
+    }
+
     tickTimer += dt;
 
     while (tickTimer > NetTickTime) {
@@ -167,9 +188,12 @@ function update(time) {
         }
     }
 
-    for (const playerIndex of players.keys()) {
-        const player = players.get(playerIndex);
+    for (const player of players.values()) {
         player.draw(ctx, assets);
+    }
+
+    for (const zombie of zombies.values()) {
+        zombie.draw(ctx, assets);
     }
 
     ctx.restore();

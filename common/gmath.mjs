@@ -3,6 +3,18 @@ export class GMath {
         return a + (b - a) * delta;
     }
 
+    static lerpAngle(a, b, delta) {
+        // https://stackoverflow.com/questions/2708476/rotation-interpolation
+        const shortestAngle = (((b - a) % (Math.PI * 2)) + Math.PI * 3) % (Math.PI * 2) - Math.PI;
+        return (a + shortestAngle * delta) % (Math.PI * 2);
+    }
+
+    static distance(x0, y0, x1, y1) {
+        const displacementX = x0 - x1;
+        const displacementY = y0 - y1;
+        return Math.sqrt(displacementX * displacementX + displacementY * displacementY);
+    }
+
     // Create a random number generator using the "Simple Fast Counter"
     // algorithm. Uses a 128bit seed provided in 4 parts (a, b, c, d).
     static sfc32(a, b, c, d) {
