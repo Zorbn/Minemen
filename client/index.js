@@ -85,6 +85,20 @@ ws.addEventListener("message", (event) => {
 
             player.health = packet.health;
         } break;
+        case NetMsgId.RespawnPlayer: {
+            let player = players.get(packet.index);
+
+            if (player === undefined) {
+                break;
+            }
+
+            player.health = 100;
+            player.isRespawning = false;
+            player.x = packet.x;
+            player.y = packet.y;
+            player.visualX = player.x;
+            player.visualY = player.y;
+        } break;
         case NetMsgId.BreakTile:
             if (packet.x < 0 || packet.x >= TilemapSize || packet.y < 0 || packet.y >= TilemapSize) {
                 break;
@@ -130,7 +144,7 @@ let cameraY = 0;
 function tick() {
     const player = players.get(localPlayerIndex);
 
-    if (player === undefined) {
+    if (player === undefined || player.health <= 0) {
         return;
     }
 
@@ -156,9 +170,19 @@ function update(time) {
         const player = players.get(playerIndex);
 
         if (playerIndex === localPlayerIndex) {
-            player.update(input, tilemap, dt);
-            cameraX = player.x;
-            cameraY = player.y;
+            if (player.health > 0) {
+                player.update(input, tilemap, dt);
+                cameraX = player.x;
+                cameraY = player.y;
+            } else if (!player.isRespawning) {
+                player.isRespawning = true;
+
+                packet.id = NetMsgId.RespawnPlayer;
+                packet.index = player.index;
+                packet.x = 0;
+                packet.y = 0;
+                ws.send(NetMsg.write(packet, outMsgData));
+            }
         } else {
             player.remoteUpdate(tilemap, dt);
         }

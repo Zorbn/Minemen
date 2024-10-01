@@ -10,10 +10,11 @@ export const NetMsgId = {
     SetLocalPlayerIndex: 2,
     MovePlayer: 3,
     SetPlayerHealth: 4,
-    BreakTile: 5,
-    SetTileState: 6,
-    AddZombie: 7,
-    MoveZombie: 8,
+    RespawnPlayer: 5,
+    BreakTile: 6,
+    SetTileState: 7,
+    AddZombie: 8,
+    MoveZombie: 9,
 }
 
 export const NetType = {
@@ -176,6 +177,11 @@ export const NetMsgs = {
     [NetMsgId.SetPlayerHealth]: new NetMsg({
         index: { fieldType: NetType.F64, fieldCount: 1 },
         health: { fieldType: NetType.F32, fieldCount: 1 },
+    }),
+    [NetMsgId.RespawnPlayer]: new NetMsg({
+        index: { fieldType: NetType.F64, fieldCount: 1 },
+        x: { fieldType: NetType.F32, fieldCount: 1 },
+        y: { fieldType: NetType.F32, fieldCount: 1 },
     }),
     [NetMsgId.BreakTile]: new NetMsg({
         x: { fieldType: NetType.F32, fieldCount: 1 },

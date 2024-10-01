@@ -20,6 +20,7 @@ export class Player {
         this.breaker = new Breaker(PlayerBreakRadius);
 
         this.health = health;
+        this.isRespawning = false;
     }
 
     update(input, tilemap, dt) {
@@ -104,8 +105,8 @@ export class Player {
     drawUI(ctx, assets) {
         const width = 64;
         const height = 6;
-        const x = this.x - width / 2;
-        const y = this.y + (assets.mineman.height - height) / 2;
+        const x = this.visualX - width / 2;
+        const y = this.visualY + (assets.mineman.height - height) / 2;
 
         ctx.fillStyle = "black";
         ctx.fillRect(x, y, width, height);

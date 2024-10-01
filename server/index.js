@@ -84,8 +84,20 @@ function onConnection(ws) {
 
                 broadcast(NetMsg.write(packet, outMsgData));
                 break;
+            case NetMsgId.RespawnPlayer: {
+                player.x = Math.random() * 640;
+                player.y = Math.random() * 480;
+                player.health = 100;
+
+                packet.index = playerIndex;
+                packet.x = player.x;
+                packet.y = player.y;
+
+                broadcast(NetMsg.write(packet, outMsgData));
+            } break;
             default:
-                console.log(`got unknown msg id: ${packet.id}`)
+                console.log(`got unknown msg id: ${packet.id}`);
+                break;
         }
     });
 
