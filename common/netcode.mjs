@@ -184,6 +184,7 @@ export const NetMsgs = {
         y: { fieldType: NetType.F32, fieldCount: 1 },
     }),
     [NetMsgId.BreakTile]: new NetMsg({
+        playerIndex: { fieldType: NetType.F64, fieldCount: 1 },
         x: { fieldType: NetType.F32, fieldCount: 1 },
         y: { fieldType: NetType.F32, fieldCount: 1 },
     }),

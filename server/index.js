@@ -1,7 +1,7 @@
 import { WebSocketServer } from "ws";
 import { Player } from "./player.js";
 import { NetMsg, NetMapByteCount, NetMsgId, NetMaxMsgLength, NetTickTime } from "../common/netcode.mjs";
-import { Tile, TilemapSize, tilemapInit } from "../common/tile.mjs";
+import { Tile, TileValues, TilemapSize, tilemapInit } from "../common/tile.mjs";
 import { Zombie } from "./zombie.js";
 
 const packet = {
@@ -75,19 +75,28 @@ function onConnection(ws) {
 
                 broadcast(NetMsg.write(packet, outMsgData));
                 break;
-            case NetMsgId.BreakTile:
+            case NetMsgId.BreakTile: {
                 if (packet.x < 0 || packet.x >= TilemapSize || packet.y < 0 || packet.y >= TilemapSize) {
                     break;
                 }
 
-                tilemap[packet.x + packet.y * TilemapSize] = Tile.Air;
+                const tileIndex = packet.x + packet.y * TilemapSize;
+                const brokenTile = tilemap[tileIndex];
+                tilemap[tileIndex] = Tile.Air;
+
+                let breakingPlayer = players.get(packet.playerIndex);
+
+                if (breakingPlayer !== undefined) {
+                    breakingPlayer.money += TileValues[brokenTile];
+                }
 
                 broadcast(NetMsg.write(packet, outMsgData));
-                break;
+            } break;
             case NetMsgId.RespawnPlayer: {
                 player.x = Math.random() * 640;
                 player.y = Math.random() * 480;
                 player.health = 100;
+                player.money = 0;
 
                 packet.index = playerIndex;
                 packet.x = player.x;

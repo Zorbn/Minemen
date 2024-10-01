@@ -5,6 +5,11 @@ export const Tile = {
     Dirt: 1,
 };
 
+export const TileValues = {
+    [Tile.Air]: 0,
+    [Tile.Dirt]: 1,
+}
+
 export const TileSize = 32;
 
 export const TilemapSize = 40;

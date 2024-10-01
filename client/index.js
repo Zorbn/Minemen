@@ -2,7 +2,7 @@ import { Input } from "./input.js";
 import { Player } from "./player.js";
 import { Zombie } from "./zombie.js";
 import { NetMsg, NetMsgId, NetMaxMsgLength, NetTickTime } from "../common/netcode.mjs";
-import { Tile, TileSize, TilemapSize, tilemapInit } from "../common/tile.mjs";
+import { Tile, TileSize, TileValues, TilemapSize, tilemapInit } from "../common/tile.mjs";
 import { GMath } from "../common/gmath.mjs";
 
 const ws = new WebSocket("ws://localhost:8448");
@@ -93,19 +93,29 @@ ws.addEventListener("message", (event) => {
             }
 
             player.health = 100;
+            player.money = 0;
             player.isRespawning = false;
             player.x = packet.x;
             player.y = packet.y;
             player.visualX = player.x;
             player.visualY = player.y;
         } break;
-        case NetMsgId.BreakTile:
+        case NetMsgId.BreakTile: {
             if (packet.x < 0 || packet.x >= TilemapSize || packet.y < 0 || packet.y >= TilemapSize) {
                 break;
             }
 
-            tilemap[packet.x + packet.y * TilemapSize] = Tile.Air;
-            break;
+            const tileIndex = packet.x + packet.y * TilemapSize;
+            const brokenTile = tilemap[tileIndex];
+            tilemap[tileIndex] = Tile.Air;
+
+            let player = players.get(packet.playerIndex);
+
+            if (player !== undefined) {
+                player.money += TileValues[brokenTile];
+            }
+
+        } break;
         case NetMsgId.SetTileState:
             for (let i = 0; i < TilemapSize * TilemapSize; i++) {
                 const bitIndex = i % 8;

@@ -36,6 +36,7 @@ export class Zombie {
                 tilemap[x + y * TilemapSize] = Tile.Air;
 
                 packet.id = NetMsgId.BreakTile;
+                packet.playerIndex = -1;
                 packet.x = x;
                 packet.y = y;
                 broadcast(NetMsg.write(packet, outMsgData));

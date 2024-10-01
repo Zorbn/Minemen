@@ -21,6 +21,8 @@ export class Player {
 
         this.health = health;
         this.isRespawning = false;
+
+        this.money = 0;
     }
 
     update(input, tilemap, dt) {
@@ -78,6 +80,7 @@ export class Player {
         }
 
         packet.id = NetMsgId.BreakTile;
+        packet.playerIndex = this.index;
         packet.x = this.breaker.getX();
         packet.y = this.breaker.getY();
         ws.send(NetMsg.write(packet, outMsgData));
@@ -103,14 +106,23 @@ export class Player {
     }
 
     drawUI(ctx, assets) {
+        const visualX = Math.floor(this.visualX);
+        const visualY = Math.floor(this.visualY);
+
         const width = 64;
         const height = 6;
-        const x = this.visualX - width / 2;
-        const y = this.visualY + (assets.mineman.height - height) / 2;
+        const x = visualX - width / 2;
+        const y = visualY + (assets.mineman.height - height) / 2;
 
         ctx.fillStyle = "black";
         ctx.fillRect(x, y, width, height);
         ctx.fillStyle = "red";
         ctx.fillRect(x + 1, y + 1, Math.max(this.health / 100, 0) * (width - 2), height - 2);
+
+        ctx.fillStyle = "orange";
+        ctx.textAlign = "center";
+        ctx.textBaseline = "top";
+        ctx.font = "14px serif";
+        ctx.fillText(`$${this.money}`, visualX, y + height + 2);
     }
 }
