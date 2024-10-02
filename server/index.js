@@ -33,10 +33,6 @@ function broadcast(data) {
     }
 }
 
-function randomCoord() {
-    return Math.random() * RoomSize;
-}
-
 function generateRoom() {
     room.clearEntities();
 
@@ -49,7 +45,8 @@ function generateRoom() {
     broadcast(NetMsg.write(packet, outMsgData));
 
     for (let i = 0; i < 5; i++) {
-        const zombie = new Zombie(nextZombieIndex, randomCoord(), randomCoord());
+        const tileIndex = room.findEmptyTileIndex();
+        const zombie = new Zombie(nextZombieIndex, Room.tileIndexToX(tileIndex), Room.tileIndexToY(tileIndex));
         room.zombies.set(nextZombieIndex, zombie);
         nextZombieIndex += 1;
 
@@ -62,8 +59,9 @@ function generateRoom() {
 
     for (const player of room.players.values()) {
         player.doAcceptMovements = false;
-        player.x = randomCoord();
-        player.y = randomCoord();
+        const tileIndex = room.findEmptyTileIndex();
+        player.x = Room.tileIndexToX(tileIndex);
+        player.y = Room.tileIndexToY(tileIndex);
 
         packet.id = NetMsgId.ServerMovePlayer;
         packet.index = player.index;
@@ -72,7 +70,8 @@ function generateRoom() {
         broadcast(NetMsg.write(packet, outMsgData));
     }
 
-    const exit = new Exit(randomCoord(), randomCoord());
+    const exitTileIndex = room.findEmptyTileIndex();
+    const exit = new Exit(Room.tileIndexToX(exitTileIndex), Room.tileIndexToY(exitTileIndex));
     room.exits.push(exit);
     packet.id = NetMsgId.AddExit;
     packet.x = exit.x;
@@ -141,8 +140,9 @@ function onConnection(ws) {
                 broadcast(NetMsg.write(packet, outMsgData));
             } break;
             case NetMsgId.RespawnPlayer: {
-                player.x = randomCoord();
-                player.y = randomCoord();
+                const tileIndex = room.findEmptyTileIndex();
+                player.x = Room.tileIndexToX(tileIndex);
+                player.y = Room.tileIndexToY(tileIndex);
                 player.health = 100;
                 player.money = 0;
 
@@ -221,7 +221,8 @@ function sendState(ws) {
 
 function addPlayer() {
     const playerIndex = nextPlayerIndex++;
-    const player = new Player(playerIndex, randomCoord(), randomCoord());
+    const tileIndex = room.findEmptyTileIndex();
+    const player = new Player(playerIndex, Room.tileIndexToX(tileIndex), Room.tileIndexToY(tileIndex));
     room.players.set(playerIndex, player);
 
     packet.id = NetMsgId.AddPlayer;

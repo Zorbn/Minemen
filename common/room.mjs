@@ -32,4 +32,30 @@ export class Room {
         this.zombies.clear();
         this.exits.length = 0;
     }
+
+    // Doesn't use the rooms RNG, intended to be called on the server and sent to clients.
+    // May return a non-empty tile if no empty tile could be found.
+    findEmptyTileIndex() {
+        const tilemapLength = TilemapSize * TilemapSize;
+
+        let i = Math.floor(Math.random() * tilemapLength);
+
+        for (let step = 0; step < tilemapLength; step++) {
+            if (this.tilemap[i] == Tile.Air) {
+                return i;
+            }
+
+            i = (i + 1) % tilemapLength;
+        }
+
+        return i;
+    }
+
+    static tileIndexToX(index) {
+        return (index % TilemapSize + 0.5) * TileSize;
+    }
+
+    static tileIndexToY(index) {
+        return (Math.floor(index / TilemapSize) + 0.5) * TileSize;
+    }
 }
