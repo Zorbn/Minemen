@@ -268,8 +268,7 @@ function update(time) {
     ctx.save();
     ctx.translate(Math.floor(-cameraX + canvas.clientWidth / 2), Math.floor(-cameraY + canvas.clientHeight / 2));
 
-    // ctx.fillStyle = "#4c2300";
-    ctx.fillStyle = backgroundPattern;
+    ctx.fillStyle = "#4c2300";
     ctx.fillRect(0, 0, RoomSize, RoomSize);
 
     const minVisibleX = GMath.clamp(Math.floor((cameraX - canvas.clientWidth / 2) / TileSize), 0, TilemapSize - 1);
