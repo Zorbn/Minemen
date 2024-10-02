@@ -46,12 +46,6 @@ const assets = {
     death: loadImage("assets/sprite_title_death_0.png"),
 };
 
-let backgroundPattern = null;
-
-assets.dirt.addEventListener("load", () => {
-    backgroundPattern = ctx.createPattern(assets.dirt, "repeat");
-});
-
 const ShowResultTime = 3;
 let showResultTimer = 0;
 let didWin = false;

@@ -19,10 +19,10 @@ export class Darkness {
         const tileX = Math.floor(x / TileSize);
         const tileY = Math.floor(y / TileSize);
 
-        const minTileX = GMath.clamp(tileX - LightRadius, 0, TilemapSize);
-        const maxTileX = GMath.clamp(tileX + LightRadius, 0, TilemapSize);
-        const minTileY = GMath.clamp(tileY - LightRadius, 0, TilemapSize);
-        const maxTileY = GMath.clamp(tileY + LightRadius, 0, TilemapSize);
+        const minTileX = GMath.clamp(tileX - LightRadius, 0, TilemapSize - 1);
+        const maxTileX = GMath.clamp(tileX + LightRadius, 0, TilemapSize - 1);
+        const minTileY = GMath.clamp(tileY - LightRadius, 0, TilemapSize - 1);
+        const maxTileY = GMath.clamp(tileY + LightRadius, 0, TilemapSize - 1);
 
         for (let iy = minTileY; iy <= maxTileY; iy++) {
             for (let ix = minTileX; ix <= maxTileX; ix++) {

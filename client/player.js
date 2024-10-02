@@ -5,7 +5,7 @@ import { NetLerpSpeed, NetMsg, NetMsgId } from "../common/netcode.mjs";
 import { Breaker, PlayerBreakRadius } from "../common/breaker.mjs";
 import { RoomSize } from "../common/room.mjs";
 
-const MoveSpeed = 50;
+const MoveSpeed = 75;
 
 export class Player {
     constructor(index, x, y, health) {

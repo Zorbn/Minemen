@@ -5,7 +5,7 @@ import { Breaker, ZombieBreakRadius } from "../common/breaker.mjs";
 import { NetMsg, NetMsgId } from "../common/netcode.mjs";
 import { RoomSize } from "../common/room.mjs";
 
-const MoveSpeed = 25;
+const MoveSpeed = 50;
 const AttackRange = 24;
 const AttackDamage = 20;
 const AttackCooldownTime = 1 / 5;
