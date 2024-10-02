@@ -46,6 +46,12 @@ const assets = {
     death: loadImage("assets/sprite_title_death_0.png"),
 };
 
+let backgroundPattern = null;
+
+assets.dirt.addEventListener("load", () => {
+    backgroundPattern = ctx.createPattern(assets.dirt, "repeat");
+});
+
 const ShowResultTime = 3;
 let showResultTimer = 0;
 let didWin = false;
@@ -262,7 +268,8 @@ function update(time) {
     ctx.save();
     ctx.translate(Math.floor(-cameraX + canvas.clientWidth / 2), Math.floor(-cameraY + canvas.clientHeight / 2));
 
-    ctx.fillStyle = "#4c2300";
+    // ctx.fillStyle = "#4c2300";
+    ctx.fillStyle = backgroundPattern;
     ctx.fillRect(0, 0, RoomSize, RoomSize);
 
     const minVisibleX = GMath.clamp(Math.floor((cameraX - canvas.clientWidth / 2) / TileSize), 0, TilemapSize - 1);

@@ -123,10 +123,14 @@ export class Player {
         ctx.fillStyle = "red";
         ctx.fillRect(x + 1, y + 1, Math.max(this.health / 100, 0) * (width - 2), height - 2);
 
-        ctx.fillStyle = "orange";
+        const moneyText = `$${this.money}`;
+
+        ctx.fillStyle = "black";
         ctx.textAlign = "center";
         ctx.textBaseline = "top";
-        ctx.font = "14px serif";
-        ctx.fillText(`$${this.money}`, visualX, y + height + 2);
+        ctx.font = "16px serif";
+        ctx.fillText(moneyText, visualX - 1, y + height + 2);
+        ctx.fillStyle = "orange";
+        ctx.fillText(moneyText, visualX + 1, y + height + 2);
     }
 }
