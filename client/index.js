@@ -7,7 +7,7 @@ import { GMath } from "../common/gmath.mjs";
 import { Exit } from "./exit.js";
 import { Room, RoomSize } from "../common/room.mjs";
 
-const ws = new WebSocket("ws://localhost:8448");
+const ws = new WebSocket("ws://158.69.154.141:8448");
 ws.binaryType = "arraybuffer";
 const packet = {};
 const outMsgData = new DataView(new ArrayBuffer(NetMaxMsgLength));
