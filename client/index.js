@@ -260,8 +260,6 @@ function update(time) {
     input.update();
 
     ctx.save();
-    ctx.fillStyle = "black";
-    ctx.fillRect(0, 0, canvas.clientWidth, canvas.clientHeight);
     ctx.translate(Math.floor(-cameraX + canvas.clientWidth / 2), Math.floor(-cameraY + canvas.clientHeight / 2));
 
     ctx.fillStyle = "#4c2300";
@@ -335,6 +333,33 @@ function update(time) {
         }
     }
 
+    // Draw darkness outside the map:
+    {
+        ctx.fillStyle = "black";
+
+        const left = cameraX - canvas.clientWidth / 2;
+        const right = cameraX + canvas.clientWidth / 2;
+
+        const top = cameraY - canvas.clientHeight / 2;
+        const bottom = cameraY + canvas.clientHeight / 2;
+
+        if (left < 0) {
+            ctx.fillRect(left, top, -left, canvas.clientHeight);
+        }
+
+        if (top < 0) {
+            ctx.fillRect(left, top, canvas.clientWidth, -top);
+        }
+
+        if (right > RoomSize) {
+            ctx.fillRect(RoomSize, top, right - RoomSize, canvas.clientHeight);
+        }
+
+        if (bottom > RoomSize) {
+            ctx.fillRect(left, RoomSize, canvas.clientWidth, bottom - RoomSize);
+        }
+    }
+
     for (const player of room.players.values()) {
         if (room.darkness.isPositionDark(player.x, player.y)) {
             continue;
@@ -358,7 +383,7 @@ function update(time) {
 
         ctx.globalAlpha = GMath.clamp(showResultTimer, 0, 1);
         const winX = Math.floor((canvas.clientWidth - resultImage.width) / 2);
-        const winY = Math.floor(resultImage.height / 2);
+        const winY = Math.floor((canvas.clientHeight / 2 - resultImage.height) / 2);
         ctx.drawImage(resultImage, winX, winY);
         ctx.globalAlpha = 1;
     }
