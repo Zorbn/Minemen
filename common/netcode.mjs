@@ -15,6 +15,8 @@ export const NetMsgId = {
     SetTileState: 7,
     AddZombie: 8,
     MoveZombie: 9,
+    AddExit: 10,
+    SetExitPrice: 11,
 }
 
 export const NetType = {
@@ -201,5 +203,12 @@ export const NetMsgs = {
         x: { fieldType: NetType.F32, fieldCount: 1 },
         y: { fieldType: NetType.F32, fieldCount: 1 },
         angle: { fieldType: NetType.F32, fieldCount: 1 },
+    }),
+    [NetMsgId.AddExit]: new NetMsg({
+        x: { fieldType: NetType.F32, fieldCount: 1 },
+        y: { fieldType: NetType.F32, fieldCount: 1 },
+    }),
+    [NetMsgId.SetExitPrice]: new NetMsg({
+        price: { fieldType: NetType.F32, fieldCount: 1 },
     }),
 }

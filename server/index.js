@@ -3,6 +3,11 @@ import { Player } from "./player.js";
 import { NetMsg, NetMapByteCount, NetMsgId, NetMaxMsgLength, NetTickTime } from "../common/netcode.mjs";
 import { Tile, TileValues, TilemapSize, tilemapInit } from "../common/tile.mjs";
 import { Zombie } from "./zombie.js";
+import { Exit } from "./exit.js";
+
+const DefaultExitPrice = 500;
+const ExitPriceDecayTime = 10;
+const ExitPriceDecayAmount = 10;
 
 const packet = {
     bits: new Array(NetMapByteCount),
@@ -24,6 +29,10 @@ const zombies = new Map();
         nextZombieIndex += 1;
     }
 }
+
+const exit = new Exit(Math.random() * 640, Math.random() * 480);
+let exitPrice = DefaultExitPrice;
+let exitPriceDecayTimer = ExitPriceDecayTime;
 
 function broadcast(data) {
     for (const socket of wss.clients) {
@@ -154,6 +163,15 @@ function sendState(ws) {
     }
 
     ws.send(NetMsg.write(packet, outMsgData));
+
+    packet.id = NetMsgId.AddExit;
+    packet.x = exit.x;
+    packet.y = exit.y;
+    ws.send(NetMsg.write(packet, outMsgData));
+
+    packet.id = NetMsgId.SetExitPrice;
+    packet.price = exitPrice;
+    ws.send(NetMsg.write(packet, outMsgData));
 }
 
 let lastTime;
@@ -178,6 +196,17 @@ function tick() {
         packet.x = zombie.x;
         packet.y = zombie.y;
         packet.angle = zombie.angle;
+        broadcast(NetMsg.write(packet, outMsgData));
+    }
+
+    exitPriceDecayTimer -= dt;
+
+    while (exitPriceDecayTimer <= 0) {
+        exitPriceDecayTimer += ExitPriceDecayTime;
+        exitPrice -= ExitPriceDecayAmount;
+
+        packet.id = NetMsgId.SetExitPrice;
+        packet.price = exitPrice;
         broadcast(NetMsg.write(packet, outMsgData));
     }
 }

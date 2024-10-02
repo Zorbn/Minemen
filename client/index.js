@@ -4,6 +4,7 @@ import { Zombie } from "./zombie.js";
 import { NetMsg, NetMsgId, NetMaxMsgLength, NetTickTime } from "../common/netcode.mjs";
 import { Tile, TileSize, TileValues, TilemapSize, tilemapInit } from "../common/tile.mjs";
 import { GMath } from "../common/gmath.mjs";
+import { Exit } from "./exit.js";
 
 const ws = new WebSocket("ws://localhost:8448");
 ws.binaryType = "arraybuffer";
@@ -26,6 +27,7 @@ const assets = {
     dirt: loadImage("assets/sprite_dirt_0.png"),
     breaking: loadImage("assets/breaking.png"),
     zombie: loadImage("assets/sprite_zombie_0.png"),
+    villager: loadImage("assets/sprite_villager_0.png"),
 };
 
 // // Noise.seed() function only supports 65535 seed values.
@@ -41,6 +43,8 @@ const assets = {
 let localPlayerIndex = null;
 const players = new Map();
 const zombies = new Map();
+let exitPrice = 0;
+const exits = [];
 const tilemap = new Array(TilemapSize * TilemapSize);
 tilemapInit(tilemap);
 
@@ -140,6 +144,12 @@ ws.addEventListener("message", (event) => {
             zombie.y = packet.y;
             zombie.angle = packet.angle;
         } break;
+        case NetMsgId.AddExit: {
+            exits.push(new Exit(packet.x, packet.y));
+        } break;
+        case NetMsgId.SetExitPrice: {
+            exitPrice = packet.price;
+        } break;
         default:
             console.log(`got unknown msg id: ${packet.id}`);
             break;
@@ -237,6 +247,10 @@ function update(time) {
         }
     }
 
+    for (const exit of exits.values()) {
+        exit.draw(ctx, assets);
+    }
+
     for (const player of players.values()) {
         player.draw(ctx, assets);
     }
@@ -247,6 +261,10 @@ function update(time) {
 
     for (const player of players.values()) {
         player.drawUI(ctx, assets);
+    }
+
+    for (const exit of exits.values()) {
+        exit.drawUI(ctx, assets, exitPrice);
     }
 
     ctx.restore();
