@@ -1,14 +1,23 @@
 import { PerlinNoise } from "./perlinNoise.mjs";
-import { GMath } from "./gmath.mjs";
 
 export const Tile = {
     Air: 0,
     Dirt: 1,
+    Stone: 2,
+    Coal: 3,
+    Iron: 4,
+    Gold: 5,
+    Diamond: 6,
 };
 
 export const TileValues = {
     [Tile.Air]: 0,
     [Tile.Dirt]: 1,
+    [Tile.Stone]: 1,
+    [Tile.Coal]: 10,
+    [Tile.Iron]: 25,
+    [Tile.Gold]: 50,
+    [Tile.Diamond]: 100,
 }
 
 export const TileSize = 32;
@@ -63,9 +72,21 @@ export function tilemapInit(tilemap, rng) {
         for (let x = 0; x < TilemapSize; x++) {
             const noise = PerlinNoise.noise(x * scale + offsetX, y * scale + offsetY);
 
-            if (noise > 0) {
-                tilemap[x + y * TilemapSize] = Tile.Dirt;
+            if (noise < -0.1) {
+                continue;
             }
+
+            let tile = Tile.Stone;
+
+            if (rng() > 0.9) {
+                tile = Tile.Coal;
+
+                while (tile < Tile.Diamond && rng() > 0.6) {
+                    tile += 1;
+                }
+            }
+
+            tilemap[x + y * TilemapSize] = tile;
         }
     }
 }

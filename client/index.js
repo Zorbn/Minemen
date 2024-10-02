@@ -17,6 +17,14 @@ const ctx = canvas.getContext("2d", { alpha: false });
 const input = new Input();
 input.addListeners();
 
+function resizeCanvas() {
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+}
+
+window.addEventListener("resize", resizeCanvas);
+resizeCanvas();
+
 function loadImage(path) {
     const image = new Image();
     image.src = path;
@@ -26,28 +34,19 @@ function loadImage(path) {
 const assets = {
     mineman: loadImage("assets/sprite_mineman_0.png"),
     dirt: loadImage("assets/sprite_dirt_0.png"),
+    stone: loadImage("assets/sprite_stone_0.png"),
+    coal: loadImage("assets/sprite_coal_0.png"),
+    iron: loadImage("assets/sprite_iron_0.png"),
+    gold: loadImage("assets/sprite_gold_0.png"),
+    diamond: loadImage("assets/sprite_diamond_0.png"),
     breaking: loadImage("assets/breaking.png"),
     zombie: loadImage("assets/sprite_zombie_0.png"),
     villager: loadImage("assets/sprite_villager_0.png"),
 };
 
-// // Noise.seed() function only supports 65535 seed values.
-// // Used for gameplay related rng, visual-only rng uses standard Math.random().
-// const seed = 0.77 * 65536;
-// const rng = GMath.sfc32(0, 0, 0, seed);
-// // Mix the rng state to account for simple seed.
-// // Otherwise starting numbers might be similar across plays.
-// for (let i = 0; i < 20; i++) {
-//     rng();
-// }
-
 let localPlayerIndex = null;
 let exitPrice = 0;
 const room = new Room();
-
-ws.addEventListener("open", (event) => {
-    // ws.send(msgData);
-});
 
 ws.addEventListener("message", (event) => {
     NetMsg.read(packet, new DataView(event.data));
@@ -263,6 +262,21 @@ function update(time) {
                     continue;
                 case Tile.Dirt:
                     tileImage = assets.dirt;
+                    break;
+                case Tile.Stone:
+                    tileImage = assets.stone;
+                    break;
+                case Tile.Coal:
+                    tileImage = assets.coal;
+                    break;
+                case Tile.Iron:
+                    tileImage = assets.iron;
+                    break;
+                case Tile.Gold:
+                    tileImage = assets.gold;
+                    break;
+                case Tile.Diamond:
+                    tileImage = assets.diamond;
                     break;
             }
 
