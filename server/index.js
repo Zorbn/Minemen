@@ -288,15 +288,18 @@ function tick() {
         for (const player of room.players.values()) {
             if (player.money >= exitPrice && GMath.distance(player.x, player.y, exit.x, exit.y) < ExitInteractRadius) {
                 hasExited = true;
+
+                packet.id = NetMsgId.PlayerWon;
+                packet.index = player.index;
+                broadcast(NetMsg.write(packet, outMsgData));
+
+                generateRoom();
+
                 break;
             }
         }
 
         if (hasExited) break;
-    }
-
-    if (hasExited) {
-        generateRoom();
     }
 }
 

@@ -42,8 +42,13 @@ const assets = {
     breaking: loadImage("assets/breaking.png"),
     zombie: loadImage("assets/sprite_zombie_0.png"),
     villager: loadImage("assets/sprite_villager_0.png"),
+    win: loadImage("assets/sprite_win_0.png"),
+    death: loadImage("assets/sprite_title_death_0.png"),
 };
 
+const ShowResultTime = 3;
+let showResultTimer = 0;
+let didWin = false;
 let localPlayerIndex = null;
 let exitPrice = 0;
 const room = new Room();
@@ -172,6 +177,10 @@ ws.addEventListener("message", (event) => {
             room.clearEntities();
             room.generate(packet.seed);
         } break;
+        case NetMsgId.PlayerWon: {
+            didWin = packet.index == localPlayerIndex;
+            showResultTimer = ShowResultTime;
+        } break;
         default:
             console.log(`got unknown msg id: ${packet.id}`);
             break;
@@ -219,6 +228,9 @@ function update(time) {
                 cameraX = player.x;
                 cameraY = player.y;
             } else if (!player.isRespawning) {
+                didWin = false;
+                showResultTimer = ShowResultTime;
+
                 player.isRespawning = true;
 
                 packet.id = NetMsgId.RespawnPlayer;
@@ -235,6 +247,8 @@ function update(time) {
     for (const zombie of room.zombies.values()) {
         zombie.remoteUpdate(room.tilemap, dt);
     }
+
+    showResultTimer -= dt;
 
     tickTimer += dt;
 
@@ -338,6 +352,16 @@ function update(time) {
     }
 
     ctx.restore();
+
+    if (showResultTimer > 0) {
+        const resultImage = didWin ? assets.win : assets.death;
+
+        ctx.globalAlpha = GMath.clamp(showResultTimer, 0, 1);
+        const winX = Math.floor((canvas.clientWidth - resultImage.width) / 2);
+        const winY = Math.floor(resultImage.height / 2);
+        ctx.drawImage(resultImage, winX, winY);
+        ctx.globalAlpha = 1;
+    }
 
     requestAnimationFrame(update);
 }

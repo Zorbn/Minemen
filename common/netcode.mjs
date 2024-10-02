@@ -19,6 +19,7 @@ export const NetMsgId = {
     SetExitPrice: 11,
     ServerMovePlayer: 12,
     GenerateRoom: 13,
+    PlayerWon: 14,
 }
 
 export const NetType = {
@@ -220,5 +221,8 @@ export const NetMsgs = {
     }),
     [NetMsgId.GenerateRoom]: new NetMsg({
         seed: { fieldType: NetType.F64, fieldCount: 1 },
+    }),
+    [NetMsgId.PlayerWon]: new NetMsg({
+        index: { fieldType: NetType.F64, fieldCount: 1 },
     }),
 }

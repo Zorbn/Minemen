@@ -14,10 +14,10 @@ export const TileValues = {
     [Tile.Air]: 0,
     [Tile.Dirt]: 1,
     [Tile.Stone]: 1,
-    [Tile.Coal]: 10,
-    [Tile.Iron]: 25,
-    [Tile.Gold]: 50,
-    [Tile.Diamond]: 100,
+    [Tile.Coal]: 5,
+    [Tile.Iron]: 10,
+    [Tile.Gold]: 25,
+    [Tile.Diamond]: 50,
 }
 
 export const TileSize = 32;
