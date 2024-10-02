@@ -4,9 +4,8 @@ import { NetMsg, NetMapByteCount, NetMsgId, NetMaxMsgLength, NetTickTime } from 
 import { Tile, TileValues, TilemapSize } from "../common/tile.mjs";
 import { Zombie } from "./zombie.js";
 import { Exit, ExitInteractRadius } from "./exit.js";
-import { Room, RoomSize } from "../common/room.mjs";
+import { Room } from "../common/room.mjs";
 import { GMath } from "../common/gmath.mjs";
-import { PlayerBreakRadius } from "../common/breaker.mjs";
 
 const DefaultExitPrice = 500;
 const ExitPriceDecayTime = 10;
@@ -250,6 +249,10 @@ function tick() {
     for (const zombieIndex of room.zombies.keys()) {
         const zombie = room.zombies.get(zombieIndex);
 
+        if (room.darkness.isPositionDark(zombie.x, zombie.y)) {
+            continue;
+        }
+
         zombie.update(room, dt, broadcast, packet, outMsgData);
 
         packet.id = NetMsgId.MoveZombie;
@@ -258,6 +261,11 @@ function tick() {
         packet.y = zombie.y;
         packet.angle = zombie.angle;
         broadcast(NetMsg.write(packet, outMsgData));
+    }
+
+    for (const player of room.players.values()) {
+        // Padding is used here to prevent players seeing the shoulder of a zombie without it being alerted.
+        room.darkness.update(player.x, player.y, 1);
     }
 
     exitPriceDecayTimer -= dt;

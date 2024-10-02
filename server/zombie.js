@@ -3,11 +3,12 @@ import { HumanoidHitboxRadius } from "../common/collision.mjs";
 import { checkRadiusTileCollisions, TilemapSize, Tile } from "../common/tile.mjs";
 import { Breaker, ZombieBreakRadius } from "../common/breaker.mjs";
 import { NetMsg, NetMsgId } from "../common/netcode.mjs";
+import { RoomSize } from "../common/room.mjs";
 
 const MoveSpeed = 25;
 const AttackRange = 24;
-const AttackDamage = 10;
-const AttackCooldownTime = 1 / 10;
+const AttackDamage = 20;
+const AttackCooldownTime = 1 / 5;
 
 export class Zombie {
     constructor(index, x, y) {
@@ -91,6 +92,9 @@ export class Zombie {
             if (!checkRadiusTileCollisions(room.tilemap, this.x, this.y + velocityY, HumanoidHitboxRadius, null)) {
                 this.y += velocityY;
             }
+
+            this.x = GMath.clamp(this.x, 0, RoomSize);
+            this.y = GMath.clamp(this.y, 0, RoomSize);
         } else if (this.attackTimer <= 0) {
             this.attackTimer = AttackCooldownTime;
 

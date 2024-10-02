@@ -3,6 +3,7 @@ import { HumanoidHitboxRadius } from "../common/collision.mjs";
 import { checkRadiusTileCollisions, TileSize } from "../common/tile.mjs";
 import { NetLerpSpeed, NetMsg, NetMsgId } from "../common/netcode.mjs";
 import { Breaker, PlayerBreakRadius } from "../common/breaker.mjs";
+import { RoomSize } from "../common/room.mjs";
 
 const MoveSpeed = 50;
 
@@ -67,6 +68,9 @@ export class Player {
         } else {
             this.y += velocityY;
         }
+
+        this.x = GMath.clamp(this.x, 0, RoomSize);
+        this.y = GMath.clamp(this.y, 0, RoomSize);
 
         this.breaker.update(tilemap, this.x, this.y, dt);
 

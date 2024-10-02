@@ -5,7 +5,7 @@ import { NetMsg, NetMsgId, NetMaxMsgLength, NetTickTime } from "../common/netcod
 import { Tile, TileSize, TileValues, TilemapSize } from "../common/tile.mjs";
 import { GMath } from "../common/gmath.mjs";
 import { Exit } from "./exit.js";
-import { Room } from "../common/room.mjs";
+import { Room, RoomSize } from "../common/room.mjs";
 
 const ws = new WebSocket("ws://localhost:8448");
 ws.binaryType = "arraybuffer";
@@ -212,6 +212,8 @@ function update(time) {
         const player = room.players.get(playerIndex);
 
         if (playerIndex === localPlayerIndex) {
+            room.darkness.update(player.x, player.y, 0);
+
             if (player.health > 0) {
                 player.update(input, room.tilemap, dt);
                 cameraX = player.x;
@@ -244,9 +246,12 @@ function update(time) {
     input.update();
 
     ctx.save();
-    ctx.fillStyle = "#4c2300";
+    ctx.fillStyle = "black";
     ctx.fillRect(0, 0, canvas.clientWidth, canvas.clientHeight);
     ctx.translate(Math.floor(-cameraX + canvas.clientWidth / 2), Math.floor(-cameraY + canvas.clientHeight / 2));
+
+    ctx.fillStyle = "#4c2300";
+    ctx.fillRect(0, 0, RoomSize, RoomSize);
 
     const minVisibleX = GMath.clamp(Math.floor((cameraX - canvas.clientWidth / 2) / TileSize), 0, TilemapSize - 1);
     const maxVisibleX = GMath.clamp(Math.ceil((cameraX + canvas.clientWidth / 2) / TileSize), 0, TilemapSize - 1);
@@ -255,9 +260,15 @@ function update(time) {
 
     for (let y = minVisibleY; y <= maxVisibleY; y++) {
         for (let x = minVisibleX; x <= maxVisibleX; x++) {
+            const i = x + y * TilemapSize;
+
+            if (room.darkness.areDark[i]) {
+                continue;
+            }
+
             let tileImage
 
-            switch (room.tilemap[x + y * TilemapSize]) {
+            switch (room.tilemap[i]) {
                 case Tile.Air:
                     continue;
                 case Tile.Dirt:
@@ -296,11 +307,33 @@ function update(time) {
         zombie.draw(ctx, assets);
     }
 
+    ctx.fillStyle = "black";
+
+    for (let y = minVisibleY; y <= maxVisibleY; y++) {
+        for (let x = minVisibleX; x <= maxVisibleX; x++) {
+            const i = x + y * TilemapSize;
+
+            if (!room.darkness.areDark[i]) {
+                continue;
+            }
+
+            ctx.fillRect(x * TileSize, y * TileSize, TileSize, TileSize);
+        }
+    }
+
     for (const player of room.players.values()) {
+        if (room.darkness.isPositionDark(player.x, player.y)) {
+            continue;
+        }
+
         player.drawUI(ctx, assets);
     }
 
     for (const exit of room.exits.values()) {
+        if (room.darkness.isPositionDark(exit.x, exit.y)) {
+            continue;
+        }
+
         exit.drawUI(ctx, assets, exitPrice);
     }
 

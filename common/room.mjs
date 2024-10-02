@@ -1,3 +1,4 @@
+import { Darkness } from "./darkness.mjs";
 import { GMath } from "./gmath.mjs";
 import { Tile, tilemapInit, TilemapSize, TileSize } from "./tile.mjs";
 
@@ -10,12 +11,15 @@ export class Room {
 
         this.tilemap = new Array(TilemapSize * TilemapSize);
         this.tilemap.fill(Tile.Air);
+        this.darkness = new Darkness();
         this.players = new Map();
         this.zombies = new Map();
         this.exits = [];
     }
 
     generate(seed) {
+        this.darkness.clear();
+
         this.rng = GMath.sfc32(0, 0, 0, seed);
         this.seed = seed;
 
@@ -31,6 +35,11 @@ export class Room {
     clearEntities() {
         this.zombies.clear();
         this.exits.length = 0;
+
+        for (const player of this.players.values()) {
+            player.health = 100;
+            player.money = 0;
+        }
     }
 
     // Doesn't use the rooms RNG, intended to be called on the server and sent to clients.
