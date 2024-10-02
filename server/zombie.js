@@ -23,17 +23,17 @@ export class Zombie {
         this.attackTimer = 0;
     }
 
-    update(players, zombies, tilemap, dt, broadcast, packet, outMsgData) {
+    update(room, dt, broadcast, packet, outMsgData) {
         this.attackTimer -= dt;
 
-        this.breaker.update(tilemap, this.x, this.y, dt);
+        this.breaker.update(room.tilemap, this.x, this.y, dt);
 
         if (this.breaker.isReady()) {
             const x = this.breaker.getX();
             const y = this.breaker.getY();
 
             if (x >= 0 && x < TilemapSize && y >= 0 && y < TilemapSize) {
-                tilemap[x + y * TilemapSize] = Tile.Air;
+                room.tilemap[x + y * TilemapSize] = Tile.Air;
 
                 packet.id = NetMsgId.BreakTile;
                 packet.playerIndex = -1;
@@ -46,7 +46,7 @@ export class Zombie {
         let targetPlayer = null;
         let targetDistance = Infinity;
 
-        for (const player of players.values()) {
+        for (const player of room.players.values()) {
             const distance = GMath.distance(player.x, player.y, this.x, this.y);
 
             if (distance < targetDistance) {
@@ -63,14 +63,14 @@ export class Zombie {
             this.angle = Math.atan2(targetPlayer.y - this.y, targetPlayer.x - this.x);
 
             // Soft collisions with other zombies: zombies choose to let each other go ahead, they are so nice!
-            for (const otherZombieIndex of zombies.keys()) {
+            for (const otherZombieIndex of room.zombies.keys()) {
                 if (otherZombieIndex <= this.index) {
                     // You are lesser than me!!!
                     // Or... you are me...
                     continue;
                 }
 
-                const otherZombie = zombies.get(otherZombieIndex);
+                const otherZombie = room.zombies.get(otherZombieIndex);
 
                 if (GMath.distance(otherZombie.x, otherZombie.y, this.x, this.y) < AttackRange) {
                     // We're overlapping, my bad, you go ahead.
@@ -84,17 +84,17 @@ export class Zombie {
             const velocityX = directionX * MoveSpeed * dt;
             const velocityY = directionY * MoveSpeed * dt;
 
-            if (!checkRadiusTileCollisions(tilemap, this.x + velocityX, this.y, HumanoidHitboxRadius, null)) {
+            if (!checkRadiusTileCollisions(room.tilemap, this.x + velocityX, this.y, HumanoidHitboxRadius, null)) {
                 this.x += velocityX;
             }
 
-            if (!checkRadiusTileCollisions(tilemap, this.x, this.y + velocityY, HumanoidHitboxRadius, null)) {
+            if (!checkRadiusTileCollisions(room.tilemap, this.x, this.y + velocityY, HumanoidHitboxRadius, null)) {
                 this.y += velocityY;
             }
         } else if (this.attackTimer <= 0) {
             this.attackTimer = AttackCooldownTime;
 
-            targetPlayer.health -= AttackDamage;
+            targetPlayer.takeDamage(AttackDamage);
 
             packet.id = NetMsgId.SetPlayerHealth;
             packet.index = targetPlayer.index;

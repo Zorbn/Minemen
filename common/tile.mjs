@@ -1,4 +1,5 @@
 import { PerlinNoise } from "./perlinNoise.mjs";
+import { GMath } from "./gmath.mjs";
 
 export const Tile = {
     Air: 0,
@@ -51,12 +52,16 @@ export function checkRadiusTileCollisions(tilemap, x, y, radius, result) {
     return false;
 }
 
-export function tilemapInit(tilemap) {
+export function tilemapInit(tilemap, rng) {
     tilemap.fill(Tile.Air);
+
+    const scale = 0.3;
+    const offsetX = rng() * 1000;
+    const offsetY = rng() * 1000;
 
     for (let y = 0; y < TilemapSize; y++) {
         for (let x = 0; x < TilemapSize; x++) {
-            const noise = PerlinNoise.noise(x * 0.3, y * 0.3);
+            const noise = PerlinNoise.noise(x * scale + offsetX, y * scale + offsetY);
 
             if (noise > 0) {
                 tilemap[x + y * TilemapSize] = Tile.Dirt;

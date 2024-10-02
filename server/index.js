@@ -1,36 +1,29 @@
 import { WebSocketServer } from "ws";
 import { Player } from "./player.js";
 import { NetMsg, NetMapByteCount, NetMsgId, NetMaxMsgLength, NetTickTime } from "../common/netcode.mjs";
-import { Tile, TileValues, TilemapSize, tilemapInit } from "../common/tile.mjs";
+import { Tile, TileValues, TilemapSize } from "../common/tile.mjs";
 import { Zombie } from "./zombie.js";
-import { Exit } from "./exit.js";
+import { Exit, ExitInteractRadius } from "./exit.js";
+import { Room, RoomSize } from "../common/room.mjs";
+import { GMath } from "../common/gmath.mjs";
+import { PlayerBreakRadius } from "../common/breaker.mjs";
 
 const DefaultExitPrice = 500;
 const ExitPriceDecayTime = 10;
 const ExitPriceDecayAmount = 10;
+
+const wss = new WebSocketServer({ port: 8448 });
 
 const packet = {
     bits: new Array(NetMapByteCount),
 };
 const outMsgData = new DataView(new ArrayBuffer(NetMaxMsgLength));
 
-const tilemap = new Array(TilemapSize * TilemapSize);
-tilemapInit(tilemap);
-
 let nextPlayerIndex = 0;
-const players = new Map();
 let nextZombieIndex = 0;
-const zombies = new Map();
 
-// Init zombies:
-{
-    for (let i = 0; i < 5; i++) {
-        zombies.set(nextZombieIndex, new Zombie(nextZombieIndex, Math.random() * 640, Math.random() * 480));
-        nextZombieIndex += 1;
-    }
-}
+const room = new Room();
 
-const exit = new Exit(Math.random() * 640, Math.random() * 480);
 let exitPrice = DefaultExitPrice;
 let exitPriceDecayTimer = ExitPriceDecayTime;
 
@@ -40,7 +33,54 @@ function broadcast(data) {
     }
 }
 
-const wss = new WebSocketServer({ port: 8448 });
+function randomCoord() {
+    return Math.random() * RoomSize;
+}
+
+function generateRoom() {
+    room.clearEntities();
+
+    const seed = Math.random() * 65536;
+
+    room.generate(seed);
+
+    packet.id = NetMsgId.GenerateRoom;
+    packet.seed = seed;
+    broadcast(NetMsg.write(packet, outMsgData));
+
+    for (let i = 0; i < 5; i++) {
+        const zombie = new Zombie(nextZombieIndex, randomCoord(), randomCoord());
+        room.zombies.set(nextZombieIndex, zombie);
+        nextZombieIndex += 1;
+
+        packet.id = NetMsgId.AddZombie;
+        packet.index = zombie.index;
+        packet.x = zombie.x;
+        packet.y = zombie.y;
+        broadcast(NetMsg.write(packet, outMsgData));
+    }
+
+    for (const player of room.players.values()) {
+        player.doAcceptMovements = false;
+        player.x = randomCoord();
+        player.y = randomCoord();
+
+        packet.id = NetMsgId.ServerMovePlayer;
+        packet.index = player.index;
+        packet.x = player.x;
+        packet.y = player.y;
+        broadcast(NetMsg.write(packet, outMsgData));
+    }
+
+    const exit = new Exit(randomCoord(), randomCoord());
+    room.exits.push(exit);
+    packet.id = NetMsgId.AddExit;
+    packet.x = exit.x;
+    packet.y = exit.y;
+    broadcast(NetMsg.write(packet, outMsgData));
+}
+
+generateRoom();
 
 wss.on("connection", (ws) => {
     ws.binaryType = "arraybuffer";
@@ -57,16 +97,8 @@ wss.on("connection", (ws) => {
 function onConnection(ws) {
     sendState(ws);
 
-    const playerIndex = nextPlayerIndex++;
-    const player = new Player(playerIndex, Math.random() * 640, Math.random() * 480);
-    players.set(playerIndex, player);
-
-    packet.id = NetMsgId.AddPlayer;
-    packet.index = playerIndex;
-    packet.x = player.x;
-    packet.y = player.y;
-    packet.health = player.health;
-    broadcast(NetMsg.write(packet, outMsgData));
+    const playerIndex = nextPlayerIndex;
+    const player = addPlayer();
 
     packet.id = NetMsgId.SetLocalPlayerIndex;
     packet.index = playerIndex;
@@ -77,6 +109,10 @@ function onConnection(ws) {
 
         switch (packet.id) {
             case NetMsgId.MovePlayer:
+                if (!player.doAcceptMovements) {
+                    break;
+                }
+
                 // Never let a client move a player that isn't theirs.
                 packet.index = playerIndex;
                 player.x = packet.x;
@@ -84,16 +120,19 @@ function onConnection(ws) {
 
                 broadcast(NetMsg.write(packet, outMsgData));
                 break;
+            case NetMsgId.ServerMovePlayer:
+                player.doAcceptMovements = true;
+                break;
             case NetMsgId.BreakTile: {
                 if (packet.x < 0 || packet.x >= TilemapSize || packet.y < 0 || packet.y >= TilemapSize) {
                     break;
                 }
 
                 const tileIndex = packet.x + packet.y * TilemapSize;
-                const brokenTile = tilemap[tileIndex];
-                tilemap[tileIndex] = Tile.Air;
+                const brokenTile = room.tilemap[tileIndex];
+                room.tilemap[tileIndex] = Tile.Air;
 
-                let breakingPlayer = players.get(packet.playerIndex);
+                let breakingPlayer = room.players.get(packet.playerIndex);
 
                 if (breakingPlayer !== undefined) {
                     breakingPlayer.money += TileValues[brokenTile];
@@ -102,8 +141,8 @@ function onConnection(ws) {
                 broadcast(NetMsg.write(packet, outMsgData));
             } break;
             case NetMsgId.RespawnPlayer: {
-                player.x = Math.random() * 640;
-                player.y = Math.random() * 480;
+                player.x = randomCoord();
+                player.y = randomCoord();
                 player.health = 100;
                 player.money = 0;
 
@@ -120,7 +159,7 @@ function onConnection(ws) {
     });
 
     ws.on("close", () => {
-        delete players.delete(playerIndex);
+        delete room.players.delete(playerIndex);
 
         packet.id = NetMsgId.RemovePlayer;
         packet.index = playerIndex;
@@ -129,8 +168,12 @@ function onConnection(ws) {
 }
 
 function sendState(ws) {
-    for (const otherPlayerIndex of players.keys()) {
-        const otherPlayer = players.get(otherPlayerIndex);
+    packet.id = NetMsgId.GenerateRoom;
+    packet.seed = room.seed;
+    ws.send(NetMsg.write(packet, outMsgData));
+
+    for (const otherPlayerIndex of room.players.keys()) {
+        const otherPlayer = room.players.get(otherPlayerIndex);
 
         packet.id = NetMsgId.AddPlayer;
         packet.index = otherPlayerIndex;
@@ -140,8 +183,8 @@ function sendState(ws) {
         ws.send(NetMsg.write(packet, outMsgData));
     }
 
-    for (const zombieIndex of zombies.keys()) {
-        const zombie = zombies.get(zombieIndex);
+    for (const zombieIndex of room.zombies.keys()) {
+        const zombie = room.zombies.get(zombieIndex);
 
         packet.id = NetMsgId.AddZombie;
         packet.index = zombieIndex;
@@ -157,21 +200,38 @@ function sendState(ws) {
         const bitIndex = i % 8;
         const byteIndex = Math.floor(i / 8);
 
-        if (tilemap[i] != Tile.Air) {
+        if (room.tilemap[i] != Tile.Air) {
             packet.bits[byteIndex] |= 1 << bitIndex;
         }
     }
 
     ws.send(NetMsg.write(packet, outMsgData));
 
-    packet.id = NetMsgId.AddExit;
-    packet.x = exit.x;
-    packet.y = exit.y;
-    ws.send(NetMsg.write(packet, outMsgData));
+    for (const exit of room.exits) {
+        packet.id = NetMsgId.AddExit;
+        packet.x = exit.x;
+        packet.y = exit.y;
+        ws.send(NetMsg.write(packet, outMsgData));
+    }
 
     packet.id = NetMsgId.SetExitPrice;
     packet.price = exitPrice;
     ws.send(NetMsg.write(packet, outMsgData));
+}
+
+function addPlayer() {
+    const playerIndex = nextPlayerIndex++;
+    const player = new Player(playerIndex, randomCoord(), randomCoord());
+    room.players.set(playerIndex, player);
+
+    packet.id = NetMsgId.AddPlayer;
+    packet.index = playerIndex;
+    packet.x = player.x;
+    packet.y = player.y;
+    packet.health = player.health;
+    broadcast(NetMsg.write(packet, outMsgData));
+
+    return player;
 }
 
 let lastTime;
@@ -186,10 +246,10 @@ function tick() {
     const dt = (time - lastTime) * 0.001;
     lastTime = time;
 
-    for (const zombieIndex of zombies.keys()) {
-        const zombie = zombies.get(zombieIndex);
+    for (const zombieIndex of room.zombies.keys()) {
+        const zombie = room.zombies.get(zombieIndex);
 
-        zombie.update(players, zombies, tilemap, dt, broadcast, packet, outMsgData);
+        zombie.update(room, dt, broadcast, packet, outMsgData);
 
         packet.id = NetMsgId.MoveZombie;
         packet.index = zombieIndex;
@@ -203,11 +263,31 @@ function tick() {
 
     while (exitPriceDecayTimer <= 0) {
         exitPriceDecayTimer += ExitPriceDecayTime;
-        exitPrice -= ExitPriceDecayAmount;
 
-        packet.id = NetMsgId.SetExitPrice;
-        packet.price = exitPrice;
-        broadcast(NetMsg.write(packet, outMsgData));
+        if (exitPrice > 0) {
+            exitPrice = Math.max(exitPrice - ExitPriceDecayAmount, 0);
+
+            packet.id = NetMsgId.SetExitPrice;
+            packet.price = exitPrice;
+            broadcast(NetMsg.write(packet, outMsgData));
+        }
+    }
+
+    let hasExited = false;
+
+    for (const exit of room.exits) {
+        for (const player of room.players.values()) {
+            if (player.money >= exitPrice && GMath.distance(player.x, player.y, exit.x, exit.y) < ExitInteractRadius) {
+                hasExited = true;
+                break;
+            }
+        }
+
+        if (hasExited) break;
+    }
+
+    if (hasExited) {
+        generateRoom();
     }
 }
 

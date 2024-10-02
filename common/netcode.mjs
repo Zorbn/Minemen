@@ -17,6 +17,8 @@ export const NetMsgId = {
     MoveZombie: 9,
     AddExit: 10,
     SetExitPrice: 11,
+    ServerMovePlayer: 12,
+    GenerateRoom: 13,
 }
 
 export const NetType = {
@@ -210,5 +212,13 @@ export const NetMsgs = {
     }),
     [NetMsgId.SetExitPrice]: new NetMsg({
         price: { fieldType: NetType.F32, fieldCount: 1 },
+    }),
+    [NetMsgId.ServerMovePlayer]: new NetMsg({
+        index: { fieldType: NetType.F64, fieldCount: 1 },
+        x: { fieldType: NetType.F32, fieldCount: 1 },
+        y: { fieldType: NetType.F32, fieldCount: 1 },
+    }),
+    [NetMsgId.GenerateRoom]: new NetMsg({
+        seed: { fieldType: NetType.F64, fieldCount: 1 },
     }),
 }

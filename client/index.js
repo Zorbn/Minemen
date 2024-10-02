@@ -2,9 +2,10 @@ import { Input } from "./input.js";
 import { Player } from "./player.js";
 import { Zombie } from "./zombie.js";
 import { NetMsg, NetMsgId, NetMaxMsgLength, NetTickTime } from "../common/netcode.mjs";
-import { Tile, TileSize, TileValues, TilemapSize, tilemapInit } from "../common/tile.mjs";
+import { Tile, TileSize, TileValues, TilemapSize } from "../common/tile.mjs";
 import { GMath } from "../common/gmath.mjs";
 import { Exit } from "./exit.js";
+import { Room } from "../common/room.mjs";
 
 const ws = new WebSocket("ws://localhost:8448");
 ws.binaryType = "arraybuffer";
@@ -41,12 +42,8 @@ const assets = {
 // }
 
 let localPlayerIndex = null;
-const players = new Map();
-const zombies = new Map();
 let exitPrice = 0;
-const exits = [];
-const tilemap = new Array(TilemapSize * TilemapSize);
-tilemapInit(tilemap);
+const room = new Room();
 
 ws.addEventListener("open", (event) => {
     // ws.send(msgData);
@@ -57,10 +54,10 @@ ws.addEventListener("message", (event) => {
 
     switch (packet.id) {
         case NetMsgId.AddPlayer:
-            players.set(packet.index, new Player(packet.index, packet.x, packet.y, packet.health));
+            room.players.set(packet.index, new Player(packet.index, packet.x, packet.y, packet.health));
             break;
         case NetMsgId.RemovePlayer:
-            players.delete(packet.index);
+            room.players.delete(packet.index);
             break;
         case NetMsgId.SetLocalPlayerIndex:
             localPlayerIndex = packet.index;
@@ -70,7 +67,7 @@ ws.addEventListener("message", (event) => {
                 break;
             }
 
-            let player = players.get(packet.index);
+            let player = room.players.get(packet.index);
 
             if (player === undefined) {
                 break;
@@ -80,8 +77,25 @@ ws.addEventListener("message", (event) => {
             player.y = packet.y;
             player.angle = packet.angle;
         } break;
+        case NetMsgId.ServerMovePlayer: {
+            let player = room.players.get(packet.index);
+
+            if (player === undefined) {
+                break;
+            }
+
+            player.x = packet.x;
+            player.y = packet.y;
+            player.visualX = player.x;
+            player.visualY = player.y;
+
+            if (player.index == localPlayerIndex) {
+                packet.id = NetMsgId.ServerMovePlayer;
+                ws.send(NetMsg.write(packet, outMsgData));
+            }
+        } break;
         case NetMsgId.SetPlayerHealth: {
-            let player = players.get(packet.index);
+            let player = room.players.get(packet.index);
 
             if (player === undefined) {
                 break;
@@ -90,7 +104,7 @@ ws.addEventListener("message", (event) => {
             player.health = packet.health;
         } break;
         case NetMsgId.RespawnPlayer: {
-            let player = players.get(packet.index);
+            let player = room.players.get(packet.index);
 
             if (player === undefined) {
                 break;
@@ -103,6 +117,11 @@ ws.addEventListener("message", (event) => {
             player.y = packet.y;
             player.visualX = player.x;
             player.visualY = player.y;
+
+            if (player.index == localPlayerIndex) {
+                packet.id = NetMsgId.ServerMovePlayer;
+                ws.send(NetMsg.write(packet, outMsgData));
+            }
         } break;
         case NetMsgId.BreakTile: {
             if (packet.x < 0 || packet.x >= TilemapSize || packet.y < 0 || packet.y >= TilemapSize) {
@@ -110,10 +129,10 @@ ws.addEventListener("message", (event) => {
             }
 
             const tileIndex = packet.x + packet.y * TilemapSize;
-            const brokenTile = tilemap[tileIndex];
-            tilemap[tileIndex] = Tile.Air;
+            const brokenTile = room.tilemap[tileIndex];
+            room.tilemap[tileIndex] = Tile.Air;
 
-            let player = players.get(packet.playerIndex);
+            let player = room.players.get(packet.playerIndex);
 
             if (player !== undefined) {
                 player.money += TileValues[brokenTile];
@@ -126,15 +145,15 @@ ws.addEventListener("message", (event) => {
                 const byteIndex = Math.floor(i / 8);
 
                 if ((packet.bits[byteIndex] & (1 << bitIndex)) == 0) {
-                    tilemap[i] = Tile.Air;
+                    room.tilemap[i] = Tile.Air;
                 }
             }
             break;
         case NetMsgId.AddZombie:
-            zombies.set(packet.index, new Zombie(packet.index, packet.x, packet.y));
+            room.zombies.set(packet.index, new Zombie(packet.index, packet.x, packet.y));
             break;
         case NetMsgId.MoveZombie: {
-            let zombie = zombies.get(packet.index);
+            let zombie = room.zombies.get(packet.index);
 
             if (zombie === undefined) {
                 break;
@@ -145,10 +164,14 @@ ws.addEventListener("message", (event) => {
             zombie.angle = packet.angle;
         } break;
         case NetMsgId.AddExit: {
-            exits.push(new Exit(packet.x, packet.y));
+            room.exits.push(new Exit(packet.x, packet.y));
         } break;
         case NetMsgId.SetExitPrice: {
             exitPrice = packet.price;
+        } break;
+        case NetMsgId.GenerateRoom: {
+            room.clearEntities();
+            room.generate(packet.seed);
         } break;
         default:
             console.log(`got unknown msg id: ${packet.id}`);
@@ -162,7 +185,7 @@ let cameraX = 0;
 let cameraY = 0;
 
 function tick() {
-    const player = players.get(localPlayerIndex);
+    const player = room.players.get(localPlayerIndex);
 
     if (player === undefined || player.health <= 0) {
         return;
@@ -186,12 +209,12 @@ function update(time) {
     const dt = Math.min((time - lastTime) * 0.001, NetTickTime);
     lastTime = time;
 
-    for (const playerIndex of players.keys()) {
-        const player = players.get(playerIndex);
+    for (const playerIndex of room.players.keys()) {
+        const player = room.players.get(playerIndex);
 
         if (playerIndex === localPlayerIndex) {
             if (player.health > 0) {
-                player.update(input, tilemap, dt);
+                player.update(input, room.tilemap, dt);
                 cameraX = player.x;
                 cameraY = player.y;
             } else if (!player.isRespawning) {
@@ -204,12 +227,12 @@ function update(time) {
                 ws.send(NetMsg.write(packet, outMsgData));
             }
         } else {
-            player.remoteUpdate(tilemap, dt);
+            player.remoteUpdate(room.tilemap, dt);
         }
     }
 
-    for (const zombie of zombies.values()) {
-        zombie.remoteUpdate(tilemap, dt);
+    for (const zombie of room.zombies.values()) {
+        zombie.remoteUpdate(room.tilemap, dt);
     }
 
     tickTimer += dt;
@@ -235,7 +258,7 @@ function update(time) {
         for (let x = minVisibleX; x <= maxVisibleX; x++) {
             let tileImage
 
-            switch (tilemap[x + y * TilemapSize]) {
+            switch (room.tilemap[x + y * TilemapSize]) {
                 case Tile.Air:
                     continue;
                 case Tile.Dirt:
@@ -247,23 +270,23 @@ function update(time) {
         }
     }
 
-    for (const exit of exits.values()) {
+    for (const exit of room.exits.values()) {
         exit.draw(ctx, assets);
     }
 
-    for (const player of players.values()) {
+    for (const player of room.players.values()) {
         player.draw(ctx, assets);
     }
 
-    for (const zombie of zombies.values()) {
+    for (const zombie of room.zombies.values()) {
         zombie.draw(ctx, assets);
     }
 
-    for (const player of players.values()) {
+    for (const player of room.players.values()) {
         player.drawUI(ctx, assets);
     }
 
-    for (const exit of exits.values()) {
+    for (const exit of room.exits.values()) {
         exit.drawUI(ctx, assets, exitPrice);
     }
 
