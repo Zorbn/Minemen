@@ -269,10 +269,11 @@ function tick() {
     for (const zombieIndex of room.zombies.keys()) {
         const zombie = room.zombies.get(zombieIndex);
 
-        if (room.darkness.isPositionDark(zombie.x, zombie.y)) {
+        if (zombie.isSleeping && room.darkness.isPositionDark(zombie.x, zombie.y)) {
             continue;
         }
 
+        zombie.isSleeping = false;
         zombie.update(room, dt, broadcast, packet);
 
         packet.id = NetMsgId.MoveZombie;

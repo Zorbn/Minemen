@@ -22,6 +22,7 @@ export class Zombie {
         this.breaker = new Breaker(ZombieBreakRadius);
 
         this.attackTimer = 0;
+        this.isSleeping = true;
     }
 
     update(room, dt, broadcast, packet) {
