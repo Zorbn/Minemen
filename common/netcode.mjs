@@ -1,4 +1,3 @@
-export const NetMaxMsgLength = 256;
 export const NetTickRate = 20;
 export const NetTickTime = 1 / 20;
 export const NetMapByteCount = 200;
@@ -52,8 +51,9 @@ export class NetMsg {
         }
     }
 
-    static write(packet, msgData) {
+    static write(packet) {
         const msg = NetMsgs[packet.id];
+        const msgData = new DataView(new ArrayBuffer(msg.length));
 
         msgData.setUint8(0, packet.id);
         let offset = 1;
@@ -102,7 +102,7 @@ export class NetMsg {
             }
         }
 
-        return new DataView(msgData.buffer, 0, msg.length);
+        return msgData;
     }
 
     static read(packet, msgData) {

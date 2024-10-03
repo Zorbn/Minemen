@@ -1,22 +1,39 @@
 import { WebSocketServer } from "ws";
 import { Player } from "./player.js";
-import { NetMsg, NetMapByteCount, NetMsgId, NetMaxMsgLength, NetTickTime } from "../common/netcode.mjs";
+import { NetMsg, NetMapByteCount, NetMsgId, NetTickTime } from "../common/netcode.mjs";
 import { Tile, TileValues, TilemapSize } from "../common/tile.mjs";
 import { Zombie } from "./zombie.js";
 import { Exit, ExitInteractRadius } from "./exit.js";
 import { Room } from "../common/room.mjs";
 import { GMath } from "../common/gmath.mjs";
+import { readFileSync } from "fs";
+import { createServer } from "https";
 
+const Debug = true;
+const Port = 8448;
 const DefaultExitPrice = 500;
 const ExitPriceDecayTime = 10;
 const ExitPriceDecayAmount = 10;
 
-const wss = new WebSocketServer({ port: 8448 });
+const wssParams = {};
+
+if (Debug) {
+    wssParams.port = Port;
+} else {
+    const key = readFileSync("ssl-cert/privkey.pem", "utf8");
+    const cert = readFileSync("ssl-cert/fullchain.pem", "utf8");
+
+    const server = createServer({ key, cert });
+    server.listen(Port);
+
+    wssParams.server = server;
+}
+
+const wss = new WebSocketServer(wssParams);
 
 const packet = {
     bits: new Array(NetMapByteCount),
 };
-const outMsgData = new DataView(new ArrayBuffer(NetMaxMsgLength));
 
 let nextPlayerIndex = 0;
 let nextZombieIndex = 0;
@@ -41,7 +58,7 @@ function generateRoom() {
 
     packet.id = NetMsgId.GenerateRoom;
     packet.seed = seed;
-    broadcast(NetMsg.write(packet, outMsgData));
+    broadcast(NetMsg.write(packet));
 
     for (let i = 0; i < 5; i++) {
         const tileIndex = room.findEmptyTileIndex();
@@ -53,7 +70,7 @@ function generateRoom() {
         packet.index = zombie.index;
         packet.x = zombie.x;
         packet.y = zombie.y;
-        broadcast(NetMsg.write(packet, outMsgData));
+        broadcast(NetMsg.write(packet));
     }
 
     for (const player of room.players.values()) {
@@ -66,7 +83,7 @@ function generateRoom() {
         packet.index = player.index;
         packet.x = player.x;
         packet.y = player.y;
-        broadcast(NetMsg.write(packet, outMsgData));
+        broadcast(NetMsg.write(packet));
     }
 
     const exitTileIndex = room.findEmptyTileIndex();
@@ -75,7 +92,7 @@ function generateRoom() {
     packet.id = NetMsgId.AddExit;
     packet.x = exit.x;
     packet.y = exit.y;
-    broadcast(NetMsg.write(packet, outMsgData));
+    broadcast(NetMsg.write(packet));
 }
 
 generateRoom();
@@ -84,12 +101,15 @@ wss.on("connection", (ws) => {
     ws.binaryType = "arraybuffer";
     ws.on("error", console.error);
 
-    // try {
-    //     onConnection(ws);
-    // } catch (ex) {
-    //     console.error(`Error while handling socket: ${ex}`);
-    // }
-    onConnection(ws);
+    if (Debug) {
+        onConnection(ws);
+    } else {
+        try {
+            onConnection(ws);
+        } catch (ex) {
+            console.error(`Error while handling socket: ${ex}`);
+        }
+    }
 });
 
 function onConnection(ws) {
@@ -100,7 +120,7 @@ function onConnection(ws) {
 
     packet.id = NetMsgId.SetLocalPlayerIndex;
     packet.index = playerIndex;
-    ws.send(NetMsg.write(packet, outMsgData));
+    ws.send(NetMsg.write(packet));
 
     ws.on("message", (data) => {
         NetMsg.read(packet, new DataView(data));
@@ -116,7 +136,7 @@ function onConnection(ws) {
                 player.x = packet.x;
                 player.y = packet.y;
 
-                broadcast(NetMsg.write(packet, outMsgData));
+                broadcast(NetMsg.write(packet));
                 break;
             case NetMsgId.ServerMovePlayer:
                 player.doAcceptMovements = true;
@@ -136,7 +156,7 @@ function onConnection(ws) {
                     breakingPlayer.money += TileValues[brokenTile];
                 }
 
-                broadcast(NetMsg.write(packet, outMsgData));
+                broadcast(NetMsg.write(packet));
             } break;
             case NetMsgId.RespawnPlayer: {
                 const tileIndex = room.findEmptyTileIndex();
@@ -149,7 +169,7 @@ function onConnection(ws) {
                 packet.x = player.x;
                 packet.y = player.y;
 
-                broadcast(NetMsg.write(packet, outMsgData));
+                broadcast(NetMsg.write(packet));
             } break;
             default:
                 console.log(`got unknown msg id: ${packet.id}`);
@@ -162,14 +182,14 @@ function onConnection(ws) {
 
         packet.id = NetMsgId.RemovePlayer;
         packet.index = playerIndex;
-        broadcast(NetMsg.write(packet, outMsgData));
+        broadcast(NetMsg.write(packet));
     });
 }
 
 function sendState(ws) {
     packet.id = NetMsgId.GenerateRoom;
     packet.seed = room.seed;
-    ws.send(NetMsg.write(packet, outMsgData));
+    ws.send(NetMsg.write(packet));
 
     for (const otherPlayerIndex of room.players.keys()) {
         const otherPlayer = room.players.get(otherPlayerIndex);
@@ -179,7 +199,7 @@ function sendState(ws) {
         packet.x = otherPlayer.x;
         packet.y = otherPlayer.y;
         packet.health = otherPlayer.health;
-        ws.send(NetMsg.write(packet, outMsgData));
+        ws.send(NetMsg.write(packet));
     }
 
     for (const zombieIndex of room.zombies.keys()) {
@@ -189,7 +209,7 @@ function sendState(ws) {
         packet.index = zombieIndex;
         packet.x = zombie.x;
         packet.y = zombie.y;
-        ws.send(NetMsg.write(packet, outMsgData));
+        ws.send(NetMsg.write(packet));
     }
 
     packet.id = NetMsgId.SetTileState;
@@ -204,18 +224,18 @@ function sendState(ws) {
         }
     }
 
-    ws.send(NetMsg.write(packet, outMsgData));
+    ws.send(NetMsg.write(packet));
 
     for (const exit of room.exits) {
         packet.id = NetMsgId.AddExit;
         packet.x = exit.x;
         packet.y = exit.y;
-        ws.send(NetMsg.write(packet, outMsgData));
+        ws.send(NetMsg.write(packet));
     }
 
     packet.id = NetMsgId.SetExitPrice;
     packet.price = exitPrice;
-    ws.send(NetMsg.write(packet, outMsgData));
+    ws.send(NetMsg.write(packet));
 }
 
 function addPlayer() {
@@ -229,7 +249,7 @@ function addPlayer() {
     packet.x = player.x;
     packet.y = player.y;
     packet.health = player.health;
-    broadcast(NetMsg.write(packet, outMsgData));
+    broadcast(NetMsg.write(packet));
 
     return player;
 }
@@ -253,14 +273,14 @@ function tick() {
             continue;
         }
 
-        zombie.update(room, dt, broadcast, packet, outMsgData);
+        zombie.update(room, dt, broadcast, packet);
 
         packet.id = NetMsgId.MoveZombie;
         packet.index = zombieIndex;
         packet.x = zombie.x;
         packet.y = zombie.y;
         packet.angle = zombie.angle;
-        broadcast(NetMsg.write(packet, outMsgData));
+        broadcast(NetMsg.write(packet));
     }
 
     for (const player of room.players.values()) {
@@ -278,7 +298,7 @@ function tick() {
 
             packet.id = NetMsgId.SetExitPrice;
             packet.price = exitPrice;
-            broadcast(NetMsg.write(packet, outMsgData));
+            broadcast(NetMsg.write(packet));
         }
     }
 
@@ -291,7 +311,7 @@ function tick() {
 
                 packet.id = NetMsgId.PlayerWon;
                 packet.index = player.index;
-                broadcast(NetMsg.write(packet, outMsgData));
+                broadcast(NetMsg.write(packet));
 
                 generateRoom();
 

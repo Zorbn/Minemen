@@ -1,16 +1,23 @@
 import { Input } from "./input.js";
 import { Player } from "./player.js";
 import { Zombie } from "./zombie.js";
-import { NetMsg, NetMsgId, NetMaxMsgLength, NetTickTime } from "../common/netcode.mjs";
+import { NetMsg, NetMsgId, NetTickTime } from "../common/netcode.mjs";
 import { Tile, TileSize, TileValues, TilemapSize } from "../common/tile.mjs";
 import { GMath } from "../common/gmath.mjs";
 import { Exit } from "./exit.js";
 import { Room, RoomSize } from "../common/room.mjs";
 
-const ws = new WebSocket("ws://158.69.154.141:8448");
+const Debug = true;
+
+let serverIp = "ws://localhost:8448";
+
+if (!Debug) {
+    serverIp = "wss://vps.zorbn.com:8448";
+}
+
+const ws = new WebSocket(serverIp);
 ws.binaryType = "arraybuffer";
 const packet = {};
-const outMsgData = new DataView(new ArrayBuffer(NetMaxMsgLength));
 
 const canvas = document.getElementById("game-view");
 const ctx = canvas.getContext("2d", { alpha: false });
@@ -95,7 +102,7 @@ ws.addEventListener("message", (event) => {
 
             if (player.index == localPlayerIndex) {
                 packet.id = NetMsgId.ServerMovePlayer;
-                ws.send(NetMsg.write(packet, outMsgData));
+                ws.send(NetMsg.write(packet));
             }
         } break;
         case NetMsgId.SetPlayerHealth: {
@@ -124,7 +131,7 @@ ws.addEventListener("message", (event) => {
 
             if (player.index == localPlayerIndex) {
                 packet.id = NetMsgId.ServerMovePlayer;
-                ws.send(NetMsg.write(packet, outMsgData));
+                ws.send(NetMsg.write(packet));
             }
         } break;
         case NetMsgId.BreakTile: {
@@ -204,9 +211,9 @@ function tick() {
     packet.x = player.x;
     packet.y = player.y;
     packet.angle = player.angle;
-    ws.send(NetMsg.write(packet, outMsgData));
+    ws.send(NetMsg.write(packet));
 
-    player.tryRequestBreak(ws, packet, outMsgData);
+    player.tryRequestBreak(ws, packet);
 }
 
 function update(time) {
@@ -237,7 +244,7 @@ function update(time) {
                 packet.index = player.index;
                 packet.x = 0;
                 packet.y = 0;
-                ws.send(NetMsg.write(packet, outMsgData));
+                ws.send(NetMsg.write(packet));
             }
         } else {
             player.remoteUpdate(room.tilemap, dt);

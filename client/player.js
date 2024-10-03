@@ -78,7 +78,7 @@ export class Player {
         this.visualY = this.y;
     }
 
-    tryRequestBreak(ws, packet, outMsgData) {
+    tryRequestBreak(ws, packet) {
         if (!this.breaker.isReady()) {
             return;
         }
@@ -87,7 +87,7 @@ export class Player {
         packet.playerIndex = this.index;
         packet.x = this.breaker.getX();
         packet.y = this.breaker.getY();
-        ws.send(NetMsg.write(packet, outMsgData));
+        ws.send(NetMsg.write(packet));
     }
 
     remoteUpdate(tilemap, dt) {

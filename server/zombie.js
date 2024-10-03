@@ -24,7 +24,7 @@ export class Zombie {
         this.attackTimer = 0;
     }
 
-    update(room, dt, broadcast, packet, outMsgData) {
+    update(room, dt, broadcast, packet) {
         this.attackTimer -= dt;
 
         this.breaker.update(room.tilemap, this.x, this.y, dt);
@@ -40,7 +40,7 @@ export class Zombie {
                 packet.playerIndex = -1;
                 packet.x = x;
                 packet.y = y;
-                broadcast(NetMsg.write(packet, outMsgData));
+                broadcast(NetMsg.write(packet));
             }
         }
 
@@ -103,7 +103,7 @@ export class Zombie {
             packet.id = NetMsgId.SetPlayerHealth;
             packet.index = targetPlayer.index;
             packet.health = targetPlayer.health;
-            broadcast(NetMsg.write(packet, outMsgData));
+            broadcast(NetMsg.write(packet));
         }
     }
 }
