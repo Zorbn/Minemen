@@ -7,7 +7,7 @@ import { GMath } from "../common/gmath.mjs";
 import { Exit } from "./exit.js";
 import { Room, RoomSize } from "../common/room.mjs";
 
-const Debug = true;
+const Debug = false;
 
 let serverIp = "ws://localhost:8448";
 
