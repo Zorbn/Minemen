@@ -50,6 +50,13 @@ function broadcast(data) {
 }
 
 function generateRoom() {
+    exitPrice = DefaultExitPrice;
+    exitPriceDecayTimer = ExitPriceDecayTime;
+
+    packet.id = NetMsgId.SetExitPrice;
+    packet.price = exitPrice;
+    broadcast(NetMsg.write(packet));
+
     room.clearEntities();
 
     const seed = Math.random() * 65536;
