@@ -19,6 +19,12 @@ const ws = new WebSocket(serverIp);
 ws.binaryType = "arraybuffer";
 const packet = {};
 
+const GameResult = {
+    Death: 0,
+    Lose: 1,
+    Win: 2,
+}
+
 const canvas = document.getElementById("game-view");
 const ctx = canvas.getContext("2d", { alpha: false });
 const input = new Input();
@@ -50,12 +56,13 @@ const assets = {
     zombie: loadImage("assets/sprite_zombie_0.png"),
     villager: loadImage("assets/sprite_villager_0.png"),
     win: loadImage("assets/sprite_win_0.png"),
+    lose: loadImage("assets/sprite_lose_0.png"),
     death: loadImage("assets/sprite_title_death_0.png"),
 };
 
 const ShowResultTime = 3;
-let showResultTimer = 0;
-let didWin = false;
+let showLastResultTimer = 0;
+let lastGameResult = GameResult.Death;
 let localPlayerIndex = null;
 let exitPrice = 0;
 const room = new Room();
@@ -185,8 +192,8 @@ ws.addEventListener("message", (event) => {
             room.generate(packet.seed);
         } break;
         case NetMsgId.PlayerWon: {
-            didWin = packet.index == localPlayerIndex;
-            showResultTimer = ShowResultTime;
+            lastGameResult = packet.index == localPlayerIndex ? GameResult.Win : GameResult.Lose;
+            showLastResultTimer = ShowResultTime;
         } break;
         default:
             console.log(`got unknown msg id: ${packet.id}`);
@@ -235,8 +242,8 @@ function update(time) {
                 cameraX = player.x;
                 cameraY = player.y;
             } else if (!player.isRespawning) {
-                didWin = false;
-                showResultTimer = ShowResultTime;
+                lastGameResult = GameResult.Death;
+                showLastResultTimer = ShowResultTime;
 
                 player.isRespawning = true;
 
@@ -255,7 +262,7 @@ function update(time) {
         zombie.remoteUpdate(room.tilemap, dt);
     }
 
-    showResultTimer -= dt;
+    showLastResultTimer -= dt;
 
     tickTimer += dt;
 
@@ -385,10 +392,22 @@ function update(time) {
 
     ctx.restore();
 
-    if (showResultTimer > 0) {
-        const resultImage = didWin ? assets.win : assets.death;
+    if (showLastResultTimer > 0) {
+        let resultImage
 
-        ctx.globalAlpha = GMath.clamp(showResultTimer, 0, 1);
+        switch (lastGameResult) {
+            case GameResult.Death:
+                resultImage = assets.death;
+                break;
+            case GameResult.Lose:
+                resultImage = assets.lose;
+                break;
+            case GameResult.Win:
+                resultImage = assets.win;
+                break;
+        }
+
+        ctx.globalAlpha = GMath.clamp(showLastResultTimer, 0, 1);
         const winX = Math.floor((canvas.clientWidth - resultImage.width) / 2);
         const winY = Math.floor((canvas.clientHeight / 2 - resultImage.height) / 2);
         ctx.drawImage(resultImage, winX, winY);
